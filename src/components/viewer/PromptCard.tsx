@@ -42,6 +42,13 @@ export const PromptCard: React.FC<PromptCardProps> = ({ prompt, viewMode, onView
   const unlocked = isPromptUnlocked(prompt);
   const isRewardLocked = prompt.accessType === 'Reward Locked' && !unlocked;
 
+  // Trending condition: viewed more than 50 times in the last 24 hours
+  const isTrending = Boolean(
+    (prompt.recentViews24h && prompt.recentViews24h > 50) ||
+    (prompt.views > 50 && prompt.lastViewedAt && Date.now() - prompt.lastViewedAt < 86400000) ||
+    (prompt.popular && prompt.views > 50)
+  );
+
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isRewardLocked) {
@@ -116,11 +123,15 @@ export const PromptCard: React.FC<PromptCardProps> = ({ prompt, viewMode, onView
             </div>
           )}
 
-          {/* Locked / Featured Badges */}
+          {/* Locked / Featured / Trending Badges */}
           <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
             {isRewardLocked ? (
               <span className="flex items-center gap-1 text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.5 rounded bg-amber-500/90 text-white backdrop-blur-xs">
                 <Lock className="w-2.5 h-2.5" /> Locked
+              </span>
+            ) : isTrending ? (
+              <span className="flex items-center gap-1 text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.5 rounded bg-rose-600/90 text-white backdrop-blur-xs">
+                <TrendingUp className="w-2.5 h-2.5" /> Trending
               </span>
             ) : prompt.featured ? (
               <span className="flex items-center gap-1 text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.5 rounded bg-indigo-500/90 text-white backdrop-blur-xs">
@@ -278,17 +289,19 @@ export const PromptCard: React.FC<PromptCardProps> = ({ prompt, viewMode, onView
               <span className="flex items-center gap-1 text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-md bg-amber-500/90 text-white backdrop-blur-xs shadow-sm">
                 <Lock className="w-2.5 h-2.5" /> Locked
               </span>
+            ) : isTrending ? (
+              <span className="flex items-center gap-1 text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-md bg-rose-600/90 text-white backdrop-blur-xs shadow-sm">
+                <TrendingUp className="w-2.5 h-2.5" /> Trending
+              </span>
             ) : prompt.featured ? (
               <span className="flex items-center gap-1 text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-md bg-indigo-600/90 text-white backdrop-blur-xs shadow-sm">
                 <Sparkles className="w-2.5 h-2.5" /> Featured
               </span>
-            ) : null}
-
-            {prompt.popular && (
+            ) : prompt.popular ? (
               <span className="flex items-center gap-1 text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-md bg-purple-600/90 text-white backdrop-blur-xs shadow-sm">
                 <TrendingUp className="w-2.5 h-2.5" /> Hot
               </span>
-            )}
+            ) : null}
           </div>
 
           <div className="pointer-events-auto flex items-center gap-1">

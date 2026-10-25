@@ -71,6 +71,33 @@ const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
 
 const STORAGE_FAVORITES_KEY = 'prompt_manager_favorites_v4';
 const STORAGE_UNLOCKS_KEY = 'prompt_manager_unlocks_v4';
+const STORAGE_AD_CONFIG_KEY = 'prompt_manager_ad_config_v4';
+
+// Helper to sanitize any payload before writing to Firebase RTDB (prevents "undefined property" crashes)
+export function sanitizeForFirebase<T>(val: T): T {
+  if (val === undefined) {
+    return '' as unknown as T;
+  }
+  if (val === null || typeof val !== 'object') {
+    return val;
+  }
+  if (Array.isArray(val)) {
+    return val
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeForFirebase(item)) as unknown as T;
+  }
+  const cleanObj: Record<string, any> = {};
+  for (const [k, v] of Object.entries(val as Record<string, any>)) {
+    if (v === undefined) {
+      cleanObj[k] = '';
+    } else if (v !== null && typeof v === 'object') {
+      cleanObj[k] = sanitizeForFirebase(v);
+    } else {
+      cleanObj[k] = v;
+    }
+  }
+  return cleanObj as T;
+}
 
 export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // All prompts & categories loaded strictly from Firebase Realtime Database (no hardcoded seed default)
@@ -97,8 +124,16 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     return [];
   });
 
-  // Reward Ad Configuration
-  const [adConfig, setAdConfig] = useState<RewardAdConfig>(DEFAULT_AD_CONFIG);
+  // Reward Ad Configuration (with local persistence fallback)
+  const [adConfig, setAdConfig] = useState<RewardAdConfig>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_AD_CONFIG_KEY);
+      if (saved) return { ...DEFAULT_AD_CONFIG, ...JSON.parse(saved) };
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_AD_CONFIG;
+  });
   const [activeRewardPrompt, setActiveRewardPrompt] = useState<PromptItem | null>(null);
 
   // Unlocked prompt IDs (via reward ads)
@@ -252,16 +287,31 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     const newPrompt: PromptItem = {
       ...promptData,
       id: newId,
+      recommendedModel: promptData.recommendedModel || '',
+      negativePrompt: promptData.negativePrompt || '',
+      description: promptData.description || '',
+      thumbnail: promptData.thumbnail || '',
       views: 0,
       copies: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
+    const sanitized = sanitizeForFirebase(newPrompt);
+
+    // Keep UI responsive immediately
+    setPrompts((prev) => [newPrompt, ...prev.filter((p) => p.id !== newId)]);
+
     try {
-      await set(ref(rtdb, `PROMPT_MANAGER/prompts_public/${newId}`), newPrompt);
+      await set(ref(rtdb, `PROMPT_MANAGER/prompts_public/${newId}`), sanitized);
       showToast(`Prompt "${newPrompt.title}" saved to Firebase!`, 'success');
     } catch (err: any) {
-      showToast(`Firebase write error: ${err.message}`, 'error');
+      console.warn('Firebase addPrompt notice:', err);
+      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
+      if (isPermDenied) {
+        showToast('Prompt created locally. Sign in with mail.sajjadahmed@gmail.com for Firebase cloud sync.', 'info');
+      } else {
+        showToast(`Firebase write note: ${err.message}`, 'error');
+      }
     }
     return newPrompt;
   };
@@ -270,26 +320,48 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   const updatePrompt = async (id: string, updates: Partial<PromptItem>) => {
     const current = prompts.find((p) => p.id === id);
     if (!current) return;
-    const updated = {
+    const updated: PromptItem = {
       ...current,
       ...updates,
+      recommendedModel: updates.recommendedModel !== undefined ? (updates.recommendedModel || '') : (current.recommendedModel || ''),
+      negativePrompt: updates.negativePrompt !== undefined ? (updates.negativePrompt || '') : (current.negativePrompt || ''),
+      description: updates.description !== undefined ? (updates.description || '') : (current.description || ''),
+      thumbnail: updates.thumbnail !== undefined ? (updates.thumbnail || '') : (current.thumbnail || ''),
       updatedAt: Date.now(),
     };
+    const sanitized = sanitizeForFirebase(updated);
+
+    // Update in-memory state immediately so UI always updates cleanly
+    setPrompts((prev) => prev.map((p) => (p.id === id ? updated : p)));
+
     try {
-      await set(ref(rtdb, `PROMPT_MANAGER/prompts_public/${id}`), updated);
+      await set(ref(rtdb, `PROMPT_MANAGER/prompts_public/${id}`), sanitized);
       showToast('Prompt updated in Firebase!', 'success');
     } catch (err: any) {
-      showToast(`Firebase update error: ${err.message}`, 'error');
+      console.warn('Firebase updatePrompt notice:', err);
+      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
+      if (isPermDenied) {
+        showToast('Prompt updated locally. Sign in with mail.sajjadahmed@gmail.com for Firebase cloud sync.', 'info');
+      } else {
+        showToast(`Firebase update note: ${err.message}`, 'error');
+      }
     }
   };
 
   // Delete Prompt from Firebase Realtime Database
   const deletePrompt = async (id: string) => {
+    setPrompts((prev) => prev.filter((p) => p.id !== id));
     try {
       await set(ref(rtdb, `PROMPT_MANAGER/prompts_public/${id}`), null);
       showToast('Prompt deleted from Firebase.', 'info');
     } catch (err: any) {
-      showToast(`Delete failed: ${err.message}`, 'error');
+      console.warn('Firebase deletePrompt notice:', err);
+      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
+      if (isPermDenied) {
+        showToast('Prompt removed locally. Sign in with mail.sajjadahmed@gmail.com for cloud sync.', 'info');
+      } else {
+        showToast(`Delete note: ${err.message}`, 'error');
+      }
     }
   };
 
@@ -298,6 +370,7 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     const p = prompts.find((x) => x.id === id);
     if (!p) return;
     const next = !p.published;
+    setPrompts((prev) => prev.map((item) => (item.id === id ? { ...item, published: next } : item)));
     try {
       await rtdbUpdate(ref(rtdb, `PROMPT_MANAGER/prompts_public/${id}`), {
         published: next,
@@ -305,7 +378,13 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       });
       showToast(next ? 'Prompt published to Viewer.' : 'Prompt unpublished (draft).', 'info');
     } catch (err: any) {
-      showToast(`Publish update error: ${err.message}`, 'error');
+      console.warn('Firebase togglePublish notice:', err);
+      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
+      if (isPermDenied) {
+        showToast('Status updated locally. Sign in with mail.sajjadahmed@gmail.com for cloud sync.', 'info');
+      } else {
+        showToast(`Publish update note: ${err.message}`, 'error');
+      }
     }
   };
 
@@ -314,9 +393,29 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     const p = prompts.find((x) => x.id === id);
     if (!p) return;
     const nextVal = (p[field] || 0) + 1;
-    setPrompts((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: nextVal } : item)));
+    const now = Date.now();
+    const isRecent = p.lastViewedAt && now - p.lastViewedAt < 86400000;
+    const nextRecentViews = field === 'views' ? (isRecent ? (p.recentViews24h || 0) + 1 : 1) : (p.recentViews24h || 0);
+
+    setPrompts((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              [field]: nextVal,
+              recentViews24h: nextRecentViews,
+              lastViewedAt: field === 'views' ? now : item.lastViewedAt,
+            }
+          : item
+      )
+    );
     try {
-      rtdbUpdate(ref(rtdb, `PROMPT_MANAGER/prompts_public/${id}`), { [field]: nextVal }).catch(() => {});
+      const updates: Record<string, any> = { [field]: nextVal };
+      if (field === 'views') {
+        updates['recentViews24h'] = nextRecentViews;
+        updates['lastViewedAt'] = now;
+      }
+      rtdbUpdate(ref(rtdb, `PROMPT_MANAGER/prompts_public/${id}`), sanitizeForFirebase(updates)).catch(() => {});
     } catch (e) {}
   };
 
@@ -327,11 +426,19 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       ...categoryData,
       id,
     };
+    const sanitized = sanitizeForFirebase(newCat);
+    setCategories((prev) => [...prev, newCat]);
     try {
-      await set(ref(rtdb, `PROMPT_MANAGER/categories/${id}`), newCat);
+      await set(ref(rtdb, `PROMPT_MANAGER/categories/${id}`), sanitized);
       showToast(`Category "${newCat.name}" saved to Firebase!`, 'success');
     } catch (err: any) {
-      showToast(`Category save error: ${err.message}`, 'error');
+      console.warn('Firebase addCategory notice:', err);
+      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
+      if (isPermDenied) {
+        showToast('Category created locally. Sign in with mail.sajjadahmed@gmail.com for cloud sync.', 'info');
+      } else {
+        showToast(`Category save note: ${err.message}`, 'error');
+      }
     }
     return newCat;
   };
@@ -340,20 +447,35 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     const c = categories.find((item) => item.id === id);
     if (!c) return;
     const updated = { ...c, ...updates };
+    const sanitized = sanitizeForFirebase(updated);
+    setCategories((prev) => prev.map((item) => (item.id === id ? updated : item)));
     try {
-      await set(ref(rtdb, `PROMPT_MANAGER/categories/${id}`), updated);
+      await set(ref(rtdb, `PROMPT_MANAGER/categories/${id}`), sanitized);
       showToast('Category updated in Firebase.', 'success');
     } catch (err: any) {
-      showToast(`Category update error: ${err.message}`, 'error');
+      console.warn('Firebase updateCategory notice:', err);
+      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
+      if (isPermDenied) {
+        showToast('Category updated locally. Sign in with mail.sajjadahmed@gmail.com for cloud sync.', 'info');
+      } else {
+        showToast(`Category update note: ${err.message}`, 'error');
+      }
     }
   };
 
   const deleteCategory = async (id: string) => {
+    setCategories((prev) => prev.filter((item) => item.id !== id));
     try {
       await set(ref(rtdb, `PROMPT_MANAGER/categories/${id}`), null);
       showToast('Category deleted from Firebase.', 'info');
     } catch (err: any) {
-      showToast(`Category delete error: ${err.message}`, 'error');
+      console.warn('Firebase deleteCategory notice:', err);
+      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
+      if (isPermDenied) {
+        showToast('Category deleted locally. Sign in with mail.sajjadahmed@gmail.com for cloud sync.', 'info');
+      } else {
+        showToast(`Category delete note: ${err.message}`, 'error');
+      }
     }
   };
 
@@ -380,10 +502,27 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     const updated = { ...adConfig, ...updates };
     setAdConfig(updated);
     try {
-      await set(ref(rtdb, 'PROMPT_MANAGER/settings/rewardAd'), updated);
+      localStorage.setItem(STORAGE_AD_CONFIG_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('LocalStorage adConfig error:', e);
+    }
+
+    const sanitized = sanitizeForFirebase(updated);
+    try {
+      await set(ref(rtdb, 'PROMPT_MANAGER/settings/rewardAd'), sanitized);
       showToast('Ad network settings saved to Firebase!', 'success');
     } catch (err: any) {
-      showToast(`Ad settings save error: ${err.message}`, 'error');
+      console.warn('Firebase updateAdConfig notice:', err);
+      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
+      if (isPermDenied) {
+        if (!isUserAdmin) {
+          showToast('Ad settings saved locally in browser! Sign in with mail.sajjadahmed@gmail.com for Firebase cloud sync.', 'info');
+        } else {
+          showToast('Ad settings saved locally in browser! (Firebase RTDB rules restricted direct cloud write).', 'info');
+        }
+      } else {
+        showToast(`Ad settings saved locally (${err?.message || 'offline'})`, 'info');
+      }
     }
   };
 

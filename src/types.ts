@@ -28,18 +28,30 @@ export interface PromptItem {
   popular: boolean;
   published: boolean;
   views: number;
+  recentViews24h?: number;
+  lastViewedAt?: number;
   copies: number;
   tags: string[];
   createdAt: number;
   updatedAt: number;
 }
 
-export type RewardAdProvider = 'custom_video' | 'unity' | 'startio' | 'adsterra' | 'google';
+export type RewardAdProvider = 'admob' | 'startio' | 'unity' | 'wortise' | 'custom_video';
 
 export interface RewardAdConfig {
   provider: RewardAdProvider;
-  placementId: string;
   enabled: boolean;
+  // Google AdMob Rewarded
+  admobAdUnitId: string;
+  // Start.io
+  startioAppId: string;
+  // Unity Ads
+  unityGameId: string;
+  unityPlacementId: string;
+  // Wortise
+  wortiseAppId: string;
+  wortiseAdUnitId: string;
+  // Custom video fallback & duration
   customVideoUrl: string;
   customVideoDurationSec: number;
   customVideoType: 'youtube' | 'direct' | 'facebook';

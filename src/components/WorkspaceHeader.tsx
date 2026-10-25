@@ -206,6 +206,16 @@ export const WorkspaceHeader: React.FC = () => {
                     </button>
                   )}
 
+                  <a
+                    href="/single_index.html"
+                    download="index.html"
+                    className="w-full text-left px-3 py-1.5 text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2"
+                    title="Download standalone single index.html file"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Download Single HTML</span>
+                  </a>
+
                   <div className="pt-1 border-t border-slate-800">
                     <button
                       type="button"

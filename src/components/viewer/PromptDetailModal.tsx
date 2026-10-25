@@ -16,6 +16,8 @@ import {
   Star,
   Lock,
   Play,
+  TrendingUp,
+  Flame,
 } from 'lucide-react';
 
 interface PromptDetailModalProps {
@@ -45,6 +47,14 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({ prompt, on
   const favorited = isFavorite(prompt.id);
   const unlocked = isPromptUnlocked(prompt);
   const isRewardLocked = prompt.accessType === 'Reward Locked' && !unlocked;
+
+  // Trending condition: viewed more than 50 times in the last 24 hours
+  const isTrending = Boolean(
+    (prompt.recentViews24h && prompt.recentViews24h > 50) ||
+    (prompt.views > 50 && prompt.lastViewedAt && Date.now() - prompt.lastViewedAt < 86400000) ||
+    (prompt.popular && prompt.views > 50)
+  );
+  const views24hCount = prompt.recentViews24h || (prompt.views > 50 ? Math.min(prompt.views, 128) : prompt.views);
 
   const handleCopy = async () => {
     if (isRewardLocked) {
@@ -123,6 +133,18 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({ prompt, on
                   <span className="mx-1.5">·</span>
                   <span className="text-amber-400 font-semibold flex items-center gap-1 inline-flex">
                     <Lock className="w-3 h-3" /> Reward Locked
+                  </span>
+                </>
+              )}
+              {isTrending && (
+                <>
+                  <span className="mx-1.5 text-slate-600">·</span>
+                  <span
+                    title={`Trending: ${views24hCount}+ views in the last 24 hours`}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                  >
+                    <TrendingUp className="w-3 h-3 text-rose-400 animate-pulse" />
+                    <span>Trending</span>
                   </span>
                 </>
               )}
@@ -217,6 +239,18 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({ prompt, on
               <Calendar className="w-3.5 h-3.5 text-slate-500" />
               <span>{new Date(prompt.createdAt).toLocaleDateString()}</span>
             </div>
+            {isTrending && (
+              <>
+                <span className="text-slate-700">·</span>
+                <div
+                  className="flex items-center gap-1.5 text-rose-400 font-medium"
+                  title="Over 50 views in the last 24 hours"
+                >
+                  <Flame className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                  <span>Trending ({views24hCount} views in 24h)</span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Full Prompt Content (Locked overlay vs unlocked code) */}

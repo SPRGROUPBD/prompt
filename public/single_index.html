@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#060919" />
+  <meta name="description" content="PromptStudio — Curated AI Prompts Library & Admin Workspace with Firebase Auth, Favorites, and Rewarded Video Ads." />
+  <title>PromptStudio — Premium AI Prompts & Admin Workspace</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" />
+
+  <!-- Firebase v9 compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-main: #060919;
+      --bg-card: #0d122b;
+      --bg-surface: #141b3d;
+      --bg-surface-elevated: #1a234f;
+      --bg-hover: #1f2a5e;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.5);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-primary: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-purple: #a855f7;
+      --accent-amber: #f59e0b;
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+      --accent-sky: #0ea5e9;
+      --gradient-brand: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-pill: 9999px;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+      --shadow-md: 0 8px 24px rgba(0,0,0,0.45);
+      --shadow-lg: 0 16px 40px rgba(0,0,0,0.6);
+      --transition: 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; border: none; background: none; }
+    code, pre { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+    /* Top Navigation Header */
+    .app-header {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(13, 18, 43, 0.94);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .header-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      max-width: 1400px; margin: 0 auto; padding: 12px 20px;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.05rem;
+      text-decoration: none; color: #fff;
+    }
+    .brand-logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--gradient-brand);
+      display: grid; place-items: center; color: #fff; font-size: 1.15rem;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    }
+    .brand-badge {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      padding: 2px 7px; border-radius: 4px;
+      background: rgba(99, 102, 241, 0.15); color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+    .brand-badge.admin {
+      background: rgba(16, 185, 129, 0.15); color: #34d399;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    /* Admin View Switcher (Only visible to mail.sajjadahmed@gmail.com) */
+    .view-switcher {
+      display: none; align-items: center; gap: 4px;
+      background: rgba(6, 9, 25, 0.85);
+      border: 1px solid var(--border-color);
+      padding: 4px; border-radius: var(--radius-md);
+    }
+    .view-switcher.active { display: flex; }
+    .view-switch-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; font-size: 0.78rem; font-weight: 600;
+      border-radius: var(--radius-sm); color: var(--text-secondary);
+      transition: var(--transition);
+    }
+    .view-switch-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+    .view-switch-btn.active {
+      background: var(--accent-primary); color: #fff;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+    }
+
+    /* User Profile & Auth in Header */
+    .header-user { display: flex; align-items: center; gap: 10px; }
+    .user-pill {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 10px 4px 5px; border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color);
+      font-size: 0.78rem; font-weight: 500;
+    }
+    .user-avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--gradient-brand); display: grid; place-items: center;
+      font-size: 0.75rem; font-weight: 700; color: #fff;
+    }
+
+    /* Common Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px 14px; font-size: 0.82rem; font-weight: 600; border-radius: var(--radius-sm);
+      transition: var(--transition); white-space: nowrap; text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--accent-primary); color: #fff;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+    }
+    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .btn-secondary {
+      background: var(--bg-surface); color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+    .btn-secondary:hover { background: var(--bg-hover); border-color: rgba(255, 255, 255, 0.16); }
+    .btn-amber {
+      background: #d97706; color: #fff;
+      box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
+    }
+    .btn-amber:hover { background: #b45309; }
+    .btn-rose {
+      background: rgba(244, 63, 94, 0.15); color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+    .btn-rose:hover { background: rgba(244, 63, 94, 0.25); color: #fff; }
+    .btn-ghost { color: var(--text-secondary); }
+    .btn-ghost:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+
+    /* Layout Containers */
+    .main-wrap { flex: 1; max-width: 1400px; width: 100%; margin: 0 auto; padding: 20px; }
+
+    /* Hero & Viewer Section */
+    .hero-banner {
+      background: radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 60%),
+                  linear-gradient(180deg, var(--bg-card) 0%, var(--bg-main) 100%);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 30px 26px; margin-bottom: 24px;
+      position: relative; overflow: hidden;
+    }
+    .hero-title { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .hero-desc { font-size: 0.9rem; color: var(--text-secondary); max-width: 680px; margin-bottom: 20px; }
+    .stats-strip {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 20px;
+      font-size: 0.8rem; color: var(--text-muted);
+    }
+    .stat-item strong { color: #fff; font-weight: 700; margin-left: 4px; }
+
+    /* Search & Category Filter Toolbar */
+    .search-row {
+      display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;
+    }
+    .search-input-wrap {
+      flex: 1; min-width: 260px; position: relative;
+    }
+    .search-input-wrap i {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); font-size: 1rem;
+    }
+    .search-input {
+      width: 100%; padding: 10px 14px 10px 38px; border-radius: var(--radius-md);
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      color: #fff; font-size: 0.85rem; outline: none; transition: var(--transition);
+    }
+    .search-input:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); }
+
+    /* Horizontal Category Chips */
+    .cat-chips {
+      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 18px;
+      scrollbar-width: none;
+    }
+    .cat-chips::-webkit-scrollbar { display: none; }
+    .cat-chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+      border-radius: var(--radius-pill); font-size: 0.78rem; font-weight: 600;
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      color: var(--text-secondary); transition: var(--transition); white-space: nowrap;
+    }
+    .cat-chip:hover { color: #fff; border-color: rgba(255, 255, 255, 0.2); }
+    .cat-chip.active {
+      background: var(--accent-primary); color: #fff; border-color: var(--accent-primary);
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.35);
+    }
+
+    /* Filter Tabs Bar */
+    .controls-bar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: var(--radius-md); margin-bottom: 22px;
+    }
+    .tabs-nav { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tab-nav-btn {
+      padding: 6px 12px; font-size: 0.78rem; font-weight: 600;
+      border-radius: var(--radius-sm); color: var(--text-secondary);
+      transition: var(--transition);
+    }
+    .tab-nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+    .tab-nav-btn.active { background: var(--bg-surface-elevated); color: #fff; border: 1px solid rgba(255,255,255,0.1); }
+    .tab-nav-btn.favorites.active { color: var(--accent-amber); }
+
+    /* Prompts Grid */
+    .prompts-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px;
+    }
+    .prompt-card {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: var(--radius-md); overflow: hidden;
+      display: flex; flex-direction: column; justify-content: space-between;
+      transition: var(--transition); cursor: pointer; position: relative;
+    }
+    .prompt-card:hover {
+      border-color: rgba(99, 102, 241, 0.35); transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    .card-thumb-wrap {
+      width: 100%; aspect-ratio: 16/9; background: #030614; position: relative; overflow: hidden;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .card-thumb {
+      width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;
+    }
+    .prompt-card:hover .card-thumb { transform: scale(1.04); }
+
+    .card-badge-left {
+      position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 5px;
+      pointer-events: none;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+      border-radius: 4px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.03em; backdrop-filter: blur(8px);
+    }
+    .badge-locked { background: rgba(245, 158, 11, 0.9); color: #000; }
+    .badge-trending { background: rgba(244, 63, 94, 0.9); color: #fff; box-shadow: 0 0 10px rgba(244,63,94,0.4); }
+    .badge-featured { background: rgba(99, 102, 241, 0.9); color: #fff; }
+    .badge-hot { background: rgba(168, 85, 247, 0.9); color: #fff; }
+
+    .card-overlay-btns {
+      position: absolute; top: 8px; right: 8px; display: flex; gap: 6px;
+    }
+    .icon-btn-blur {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: rgba(6, 9, 25, 0.8); backdrop-filter: blur(8px);
+      display: grid; place-items: center; color: var(--text-secondary);
+      border: 1px solid rgba(255, 255, 255, 0.1); transition: var(--transition);
+    }
+    .icon-btn-blur:hover { color: #fff; background: rgba(6, 9, 25, 0.95); }
+    .icon-btn-blur.favorited { color: var(--accent-amber); }
+
+    .card-body { padding: 14px; display: flex; flex-direction: column; flex: 1; justify-content: space-between; gap: 10px; }
+    .card-meta { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-muted); }
+    .card-meta .cat { color: #818cf8; font-weight: 600; }
+    .card-title {
+      font-size: 0.95rem; font-weight: 700; color: #fff; line-height: 1.35;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .card-desc {
+      font-size: 0.8rem; color: var(--text-secondary);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .card-footer {
+      display: flex; align-items: center; justify-content: space-between; pt: 8px;
+      border-top: 1px solid var(--border-color); font-size: 0.72rem; color: var(--text-muted);
+    }
+
+    /* Admin Studio Section */
+    #adminSection { display: none; margin-top: 10px; }
+    #adminSection.active { display: block; }
+    .admin-subnav {
+      display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 20px;
+    }
+    .admin-tab-btn {
+      padding: 8px 16px; border-radius: var(--radius-sm); font-size: 0.84rem; font-weight: 600;
+      color: var(--text-secondary); transition: var(--transition);
+    }
+    .admin-tab-btn:hover { color: #fff; background: var(--bg-card); }
+    .admin-tab-btn.active { background: var(--accent-primary); color: #fff; }
+
+    .admin-stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 22px;
+    }
+    .admin-stat-card {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 4px;
+    }
+    .admin-stat-card .val { font-size: 1.6rem; font-weight: 800; color: #fff; font-family: 'JetBrains Mono', monospace; }
+
+    /* Admin Tables */
+    .table-box {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: var(--radius-md); overflow-x: auto; margin-bottom: 24px;
+    }
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem; }
+    .data-table th {
+      padding: 12px 14px; background: rgba(6, 9, 25, 0.7);
+      border-bottom: 1px solid var(--border-color); color: var(--text-muted);
+      font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.04em;
+    }
+    .data-table td { padding: 12px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); vertical-align: middle; }
+    .data-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+    /* Modals Overlay & Frame */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(3, 5, 15, 0.86); backdrop-filter: blur(10px);
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--bg-card); border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-lg); width: 100%; max-width: 640px;
+      max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg);
+      display: flex; flex-direction: column;
+    }
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border-color);
+      position: sticky; top: 0; background: rgba(13, 18, 43, 0.96); z-index: 10;
+    }
+    .modal-head h3 { font-size: 1.1rem; font-weight: 700; }
+    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .modal-foot {
+      padding: 14px 20px; border-top: 1px solid var(--border-color);
+      display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+      background: rgba(13, 18, 43, 0.96); position: sticky; bottom: 0;
+    }
+
+    /* Form Fields */
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
+    .form-control {
+      width: 100%; padding: 9px 12px; border-radius: var(--radius-sm);
+      background: #060919; border: 1px solid var(--border-color);
+      color: #fff; font-size: 0.84rem; outline: none; transition: var(--transition);
+    }
+    .form-control:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+    .form-check { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; }
+
+    /* Toast Container */
+    .toast-container {
+      position: fixed; bottom: 20px; right: 20px; z-index: 200;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .toast {
+      background: #141b3d; border: 1px solid rgba(255,255,255,0.12);
+      color: #fff; padding: 10px 16px; border-radius: var(--radius-md);
+      font-size: 0.82rem; font-weight: 500; box-shadow: var(--shadow-md);
+      pointer-events: auto; animation: slideIn 0.2s ease forwards;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .toast.success { border-left: 4px solid var(--accent-emerald); }
+    .toast.error { border-left: 4px solid var(--accent-rose); }
+    @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    /* Prompt Detail Box */
+    .prompt-text-box {
+      background: #030614; border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm); padding: 14px; font-size: 0.84rem;
+      color: #e2e8f0; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+      user-select: all; max-height: 340px; overflow-y: auto;
+    }
+
+    /* Auth Modal Tabs */
+    .auth-tabs { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 14px; }
+    .auth-tab-btn {
+      flex: 1; text-align: center; padding: 10px; font-size: 0.84rem; font-weight: 600;
+      color: var(--text-secondary); border-bottom: 2px solid transparent; transition: var(--transition);
+    }
+    .auth-tab-btn.active { color: #fff; border-bottom-color: var(--accent-primary); }
+  </style>
+</head>
+<body>
+
+  <!-- ================= TOP HEADER ================= -->
+  <header class="app-header">
+    <div class="header-row">
+      <div style="display:flex;align-items:center;gap:14px">
+        <a href="javascript:void(0)" onclick="showView('viewer')" class="brand">
+          <div class="brand-logo"><i class="ri-sparkling-fill"></i></div>
+          <span>PromptStudio</span>
+        </a>
+        <span class="brand-badge" id="roleBadge">AI Library</span>
+      </div>
+
+      <!-- Mode Switcher (Visible ONLY to mail.sajjadahmed@gmail.com) -->
+      <div class="view-switcher" id="adminSwitcher">
+        <button class="view-switch-btn active" id="btnViewViewer" onclick="showView('viewer')">
+          <i class="ri-eye-line"></i> Viewer
+        </button>
+        <button class="view-switch-btn" id="btnViewAdmin" onclick="showView('admin')">
+          <i class="ri-dashboard-line"></i> Admin Studio
+        </button>
+        <button class="view-switch-btn" onclick="openAddPromptModal()" style="color:#818cf8">
+          <i class="ri-add-line"></i> New Prompt
+        </button>
+      </div>
+
+      <!-- User Auth Header -->
+      <div class="header-user">
+        <div id="loggedOutBox">
+          <button class="btn btn-primary" onclick="openAuthModal('signin')">
+            <i class="ri-user-line"></i> Sign In
+          </button>
+        </div>
+        <div id="loggedInBox" style="display:none;align-items:center;gap:8px">
+          <div class="user-pill">
+            <div class="user-avatar" id="userAvatarCircle">U</div>
+            <span id="userEmailLabel" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">user</span>
+          </div>
+          <button class="btn btn-ghost" onclick="doSignOut()" title="Sign Out">
+            <i class="ri-logout-box-r-line"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN WORKSPACE ================= -->
+  <main class="main-wrap">
+
+    <!-- ================= VIEWER SECTION (FAST DEFAULT FOR ALL USERS) ================= -->
+    <section id="viewerSection">
+      <!-- Hero Banner -->
+      <div class="hero-banner">
+        <h1 class="hero-title">Curated AI Prompts &amp; Templates</h1>
+        <p class="hero-desc">
+          Browse, copy, and unlock production-grade AI prompts for Gemini, ChatGPT, Claude, Midjourney &amp; FLUX.
+        </p>
+        <div class="stats-strip">
+          <div class="stat-item"><i class="ri-file-list-3-line"></i> Prompts:<strong id="kpiTotal">0</strong></div>
+          <div class="stat-item"><i class="ri-star-line"></i> Favorites:<strong id="kpiFavs">0</strong></div>
+          <div class="stat-item"><i class="ri-eye-line"></i> Total Views:<strong id="kpiViews">0</strong></div>
+          <div class="stat-item"><i class="ri-shield-check-line"></i> Direct RTDB Sync</div>
+        </div>
+      </div>
+
+      <!-- Search & Category Filters -->
+      <div>
+        <div class="search-row">
+          <div class="search-input-wrap">
+            <i class="ri-search-line"></i>
+            <input type="text" class="search-input" id="searchInput" placeholder="Search prompts by keyword, model, or category..." oninput="handleSearch()" />
+          </div>
+        </div>
+
+        <!-- Categories horizontal bar -->
+        <div class="cat-chips" id="catChipsContainer"></div>
+      </div>
+
+      <!-- Controls Toolbar -->
+      <div class="controls-bar">
+        <div class="tabs-nav">
+          <button class="tab-nav-btn active" data-tab="all" onclick="setTabFilter('all')">All</button>
+          <button class="tab-nav-btn favorites" data-tab="favorites" onclick="setTabFilter('favorites')">
+            <i class="ri-star-fill"></i> Favorites (<span id="favCountBadge">0</span>)
+          </button>
+          <button class="tab-nav-btn" data-tab="latest" onclick="setTabFilter('latest')">Latest</button>
+          <button class="tab-nav-btn" data-tab="popular" onclick="setTabFilter('popular')">Popular</button>
+          <button class="tab-nav-btn" data-tab="featured" onclick="setTabFilter('featured')">Featured</button>
+          <button class="tab-nav-btn" data-tab="free" onclick="setTabFilter('free')">Free</button>
+        </div>
+
+        <div style="font-size:0.8rem;color:var(--text-muted)">
+          Showing <span id="countIndicator" style="color:#fff;font-weight:700">0</span> prompts
+        </div>
+      </div>
+
+      <!-- Prompts Grid Container -->
+      <div class="prompts-grid" id="promptsGrid"></div>
+    </section>
+
+    <!-- ================= ADMIN STUDIO (STRICTLY FOR mail.sajjadahmed@gmail.com) ================= -->
+    <section id="adminSection">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px">
+        <div>
+          <h2 style="font-size:1.4rem;font-weight:800">Admin Studio &amp; Manager</h2>
+          <p style="font-size:0.82rem;color:var(--text-secondary)">
+            Full Add, Edit &amp; Delete controls for prompts, categories, and rewarded ad networks in Firebase Realtime Database.
+          </p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="openAddPromptModal()">
+            <i class="ri-add-line"></i> Add New Prompt
+          </button>
+          <button class="btn btn-secondary" onclick="openAddCategoryModal()">
+            <i class="ri-folder-add-line"></i> Add Category
+          </button>
+        </div>
+      </div>
+
+      <!-- Admin Subnav Tabs -->
+      <div class="admin-subnav">
+        <button class="admin-tab-btn active" id="btnAdminTabPrompts" onclick="switchAdminTab('prompts')">
+          <i class="ri-file-list-3-line"></i> Prompts (<span id="adminPromptTabCount">0</span>)
+        </button>
+        <button class="admin-tab-btn" id="btnAdminTabCategories" onclick="switchAdminTab('categories')">
+          <i class="ri-folder-3-line"></i> Categories (<span id="adminCatTabCount">0</span>)
+        </button>
+        <button class="admin-tab-btn" id="btnAdminTabAds" onclick="switchAdminTab('ads')">
+          <i class="ri-tv-line"></i> Rewarded Video Ads
+        </button>
+      </div>
+
+      <!-- Admin KPI Stats -->
+      <div class="admin-stats-grid">
+        <div class="admin-stat-card">
+          <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:700">Total Prompts</span>
+          <span class="val" id="adminStatPrompts">0</span>
+        </div>
+        <div class="admin-stat-card">
+          <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:700">Active Categories</span>
+          <span class="val" id="adminStatCats">0</span>
+        </div>
+        <div class="admin-stat-card">
+          <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:700">Total Views</span>
+          <span class="val" id="adminStatViews">0</span>
+        </div>
+        <div class="admin-stat-card">
+          <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:700">Total Copies</span>
+          <span class="val" id="adminStatCopies">0</span>
+        </div>
+      </div>
+
+      <!-- TAB 1: ALL PROMPTS TABLE -->
+      <div id="adminTabContentPrompts">
+        <div class="table-box">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Prompt Title</th>
+                <th>Category</th>
+                <th>Type</th>
+                <th>Access</th>
+                <th>Stats</th>
+                <th>Status</th>
+                <th style="text-align:right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminPromptsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2: CATEGORIES MANAGEMENT -->
+      <div id="adminTabContentCategories" style="display:none">
+        <div class="table-box">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Icon &amp; Name</th>
+                <th>Description</th>
+                <th>Order</th>
+                <th>Status</th>
+                <th style="text-align:right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminCategoriesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: REWARDED VIDEO ADS CONFIGURATION -->
+      <div id="adminTabContentAds" style="display:none">
+        <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:22px;max-width:800px;margin-bottom:24px">
+          <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:14px;margin-bottom:18px">
+            <div>
+              <h3 style="font-size:1.1rem;font-weight:700">Rewarded Video Ad Networks</h3>
+              <p style="font-size:0.8rem;color:var(--text-secondary)">AdMob, Start.io, UnityAds, Wortise &amp; Custom Video SDK configuration.</p>
+            </div>
+            <label class="form-check">
+              <input type="checkbox" id="adCfgEnabled" checked />
+              <span>Reward Ads Enabled</span>
+            </label>
+          </div>
+
+          <form id="adSettingsForm" onsubmit="saveAdSettings(event)" style="display:flex;flex-direction:column;gap:18px">
+            <div class="form-group">
+              <label>Active Network Provider</label>
+              <select class="form-control" id="adCfgProvider">
+                <option value="admob">Google AdMob Rewarded</option>
+                <option value="startio">Start.io Rewarded Interstitial</option>
+                <option value="unity">UnityAds Rewarded Video</option>
+                <option value="wortise">Wortise Rewarded Ads</option>
+                <option value="custom_video">Custom / Sponsored Video Showcase</option>
+              </select>
+            </div>
+
+            <!-- AdMob -->
+            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px">
+              <div style="font-weight:700;font-size:0.82rem;color:var(--accent-emerald);margin-bottom:8px">Google AdMob</div>
+              <div class="form-group">
+                <label>Admob Ad unit ID:</label>
+                <input type="text" class="form-control" id="adCfgAdmobAdUnitId" placeholder="ca-app-pub-3940256099942544/5224354917" />
+              </div>
+            </div>
+
+            <!-- Start.io -->
+            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px">
+              <div style="font-weight:700;font-size:0.82rem;color:var(--accent-amber);margin-bottom:8px">Start.io</div>
+              <div class="form-group">
+                <label>Start.io App ID:</label>
+                <input type="text" class="form-control" id="adCfgStartioAppId" placeholder="208394102" />
+              </div>
+            </div>
+
+            <!-- UnityAds -->
+            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px">
+              <div style="font-weight:700;font-size:0.82rem;color:var(--accent-sky);margin-bottom:8px">UnityAds</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>UnityAds Game ID:</label>
+                  <input type="text" class="form-control" id="adCfgUnityGameId" placeholder="5128394" />
+                </div>
+                <div class="form-group">
+                  <label>Placement ID:</label>
+                  <input type="text" class="form-control" id="adCfgUnityPlacementId" placeholder="rewardedVideo" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Wortise -->
+            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px">
+              <div style="font-weight:700;font-size:0.82rem;color:var(--accent-purple);margin-bottom:8px">Wortise</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Wortise App ID:</label>
+                  <input type="text" class="form-control" id="adCfgWortiseAppId" placeholder="test-app-id-123" />
+                </div>
+                <div class="form-group">
+                  <label>AdUnit ID:</label>
+                  <input type="text" class="form-control" id="adCfgWortiseAdUnitId" placeholder="test-rewarded-ad-unit" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Custom Video & Daily Limit -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>Custom Video URL (MP4 / Webm)</label>
+                <input type="text" class="form-control" id="adCfgCustomVideoUrl" placeholder="https://example.com/ad-video.mp4" />
+              </div>
+              <div class="form-group">
+                <label>Video Duration (Seconds)</label>
+                <input type="number" class="form-control" id="adCfgCustomDuration" value="15" min="5" max="60" />
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px">
+              <button type="submit" class="btn btn-primary"><i class="ri-save-line"></i> Save Ad Settings</button>
+              <button type="button" class="btn btn-secondary" onclick="testRewardAdFlow()"><i class="ri-play-circle-line"></i> Test Ad Flow</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= PROMPT ADD / EDIT MODAL ================= -->
+  <div class="modal-overlay" id="promptFormModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="promptFormModalTitle">Add New Prompt</h3>
+        <button onclick="closeModal('promptFormModal')"><i class="ri-close-line" style="font-size:1.3rem"></i></button>
+      </div>
+      <form id="promptForm" onsubmit="handlePromptFormSubmit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="pfPromptId" />
+
+          <div class="form-group">
+            <label>Prompt Title *</label>
+            <input type="text" class="form-control" id="pfTitle" required placeholder="e.g. Ultra-Realistic Portrait Generator" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Category *</label>
+              <select class="form-control" id="pfCategory" required></select>
+            </div>
+            <div class="form-group">
+              <label>Prompt Type</label>
+              <select class="form-control" id="pfType">
+                <option value="Image Generation">Image Generation</option>
+                <option value="Text Generation">Text Generation</option>
+                <option value="Code Assistant">Code Assistant</option>
+                <option value="Video &amp; Audio">Video &amp; Audio</option>
+                <option value="Workflow / Agent">Workflow / Agent</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Access Type</label>
+              <select class="form-control" id="pfAccessType">
+                <option value="Free">Free (Immediate Access)</option>
+                <option value="Reward Locked">Reward Locked (Ad Required)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Recommended AI Model</label>
+              <input type="text" class="form-control" id="pfModel" placeholder="e.g. Gemini 2.5 Pro, Midjourney v6" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Thumbnail Image or Video URL</label>
+            <input type="url" class="form-control" id="pfThumbnail" placeholder="https://images.unsplash.com/... or data:image/..." />
+          </div>
+
+          <div class="form-group">
+            <label>Short Description</label>
+            <input type="text" class="form-control" id="pfDescription" placeholder="One sentence summary of what this prompt produces" />
+          </div>
+
+          <div class="form-group">
+            <label>Full Prompt Content *</label>
+            <textarea class="form-control" id="pfContent" rows="6" required placeholder="Enter the exact prompt text with variables like [TOPIC], [STYLE]..."></textarea>
+          </div>
+
+          <div class="form-row">
+            <label class="form-check">
+              <input type="checkbox" id="pfFeatured" />
+              <span>Featured Highlight</span>
+            </label>
+            <label class="form-check">
+              <input type="checkbox" id="pfPopular" />
+              <span>Mark as Popular / Hot</span>
+            </label>
+            <label class="form-check">
+              <input type="checkbox" id="pfPublished" checked />
+              <span>Published Live</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('promptFormModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="pfSubmitBtn"><i class="ri-check-line"></i> Save Prompt</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= CATEGORY ADD / EDIT MODAL ================= -->
+  <div class="modal-overlay" id="categoryFormModal">
+    <div class="modal-box" style="max-width:440px">
+      <div class="modal-head">
+        <h3 id="catModalTitle">Add Category</h3>
+        <button onclick="closeModal('categoryFormModal')"><i class="ri-close-line" style="font-size:1.3rem"></i></button>
+      </div>
+      <form id="categoryForm" onsubmit="handleCategoryFormSubmit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="cfCatId" />
+
+          <div class="form-group">
+            <label>Category Name *</label>
+            <input type="text" class="form-control" id="cfName" required placeholder="e.g. 3D &amp; Spatial" />
+          </div>
+
+          <div class="form-group">
+            <label>Icon (RemixIcon Class)</label>
+            <select class="form-control" id="cfIcon">
+              <option value="ri-image-line">Image (ri-image-line)</option>
+              <option value="ri-video-line">Video (ri-video-line)</option>
+              <option value="ri-code-s-slash-line">Coding (ri-code-s-slash-line)</option>
+              <option value="ri-sparkling-line">Marketing (ri-sparkling-line)</option>
+              <option value="ri-book-open-line">Writing (ri-book-open-line)</option>
+              <option value="ri-line-chart-line">Business (ri-line-chart-line)</option>
+              <option value="ri-box-3-line">3D Spatial (ri-box-3-line)</option>
+              <option value="ri-music-2-line">Audio (ri-music-2-line)</option>
+              <option value="ri-folder-line">General Folder (ri-folder-line)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Description</label>
+            <input type="text" class="form-control" id="cfDesc" placeholder="Brief description of this prompt group" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Display Order</label>
+              <input type="number" class="form-control" id="cfOrder" value="1" min="1" />
+            </div>
+            <div class="form-group" style="justify-content:center">
+              <label class="form-check" style="margin-top:18px">
+                <input type="checkbox" id="cfEnabled" checked />
+                <span>Active &amp; Visible</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('categoryFormModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="ri-save-line"></i> Save Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= AUTH MODAL (SIGN IN / CREATE ACCOUNT / FORGOT PASSWORD) ================= -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-box" style="max-width:420px">
+      <div class="modal-head">
+        <h3 id="authModalTitle">Sign In</h3>
+        <button onclick="closeModal('authModal')"><i class="ri-close-line" style="font-size:1.2rem"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="auth-tabs" id="authTabButtons">
+          <button class="auth-tab-btn active" id="tabBtnSignIn" onclick="switchAuthTab('signin')">Sign In</button>
+          <button class="auth-tab-btn" id="tabBtnSignUp" onclick="switchAuthTab('signup')">Create Account</button>
+        </div>
+
+        <div id="authAlert" style="display:none;padding:10px;border-radius:8px;background:rgba(244,63,94,0.15);color:#fb7185;font-size:0.8rem"></div>
+
+        <form id="authForm" onsubmit="handleAuthSubmit(event)">
+          <div class="form-group" id="groupDisplayName" style="display:none">
+            <label>Full Name</label>
+            <input type="text" class="form-control" id="authDisplayName" placeholder="e.g. Sajjad Ahmed" />
+          </div>
+
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" class="form-control" id="authEmail" required placeholder="name@example.com" />
+          </div>
+
+          <div class="form-group" id="groupPassword">
+            <div style="display:flex;justify-content:space-between">
+              <label>Password</label>
+              <a href="javascript:void(0)" onclick="switchAuthTab('forgot')" style="font-size:0.75rem;color:var(--accent-primary)">Forgot?</a>
+            </div>
+            <input type="password" class="form-control" id="authPassword" placeholder="••••••••" />
+          </div>
+
+          <div style="margin-top:14px">
+            <button type="submit" class="btn btn-primary" style="width:100%" id="authSubmitBtn">Sign In</button>
+          </div>
+        </form>
+
+        <div id="forgotBackLink" style="display:none;text-align:center;margin-top:6px">
+          <a href="javascript:void(0)" onclick="switchAuthTab('signin')" style="font-size:0.8rem;color:var(--text-secondary)">← Back to Sign In</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PROMPT DETAIL MODAL ================= -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="detailTitle">Prompt Details</h3>
+        <button onclick="closeModal('detailModal')"><i class="ri-close-line" style="font-size:1.3rem"></i></button>
+      </div>
+      <div class="modal-body" id="detailBody"></div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="detailShareBtn"><i class="ri-share-line"></i> Share</button>
+        <button class="btn btn-primary" id="detailCopyBtn"><i class="ri-file-copy-line"></i> Copy Prompt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= REWARD VIDEO AD MODAL ================= -->
+  <div class="modal-overlay" id="rewardModal">
+    <div class="modal-box" style="max-width:440px;text-align:center">
+      <div class="modal-head">
+        <h3 style="font-size:0.95rem" id="rewardModalNetworkName">Rewarded Video Ad</h3>
+        <button onclick="closeRewardAdModal()"><i class="ri-close-line"></i></button>
+      </div>
+      <div class="modal-body" style="padding:24px 18px">
+        <div style="width:54px;height:54px;border-radius:14px;background:rgba(99,102,241,0.15);color:var(--accent-primary);display:grid;place-items:center;margin:0 auto 12px;font-size:1.8rem">
+          <i class="ri-video-line"></i>
+        </div>
+        <h4 id="rewardModalPromptTitle" style="font-size:1rem;margin-bottom:6px"></h4>
+        <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:14px">Watch this short sponsored ad to unlock 24 hours of full prompt access.</p>
+
+        <div style="background:#060919;border:1px solid var(--border-color);border-radius:8px;padding:20px 16px;margin-bottom:12px">
+          <div style="font-size:2rem;font-weight:800;color:var(--accent-amber)" id="rewardAdTimer">15s</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px" id="rewardAdWatermark">Placement: Live SDK</div>
+        </div>
+
+        <button class="btn btn-amber" id="claimRewardBtn" disabled style="width:100%" onclick="claimRewardUnlock()">
+          <i class="ri-lock-unlock-line"></i> Claim 24h Unlock Pass
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastBox"></div>
+
+  <!-- ================= APPLICATION ENGINE ================= -->
+  <script>
+    // Real Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBoIxaoto4Gd48pPThk1KTERvoejI8HzNA",
+      authDomain: "chat-881cc.firebaseapp.com",
+      databaseURL: "https://chat-881cc-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "chat-881cc",
+      storageBucket: "chat-881cc.firebasestorage.app",
+      messagingSenderId: "1095415944252",
+      appId: "1:1095415944252:web:8458c81f41da642edcdf39",
+      measurementId: "G-VS7VCXT090"
+    };
+
+    const FIXED_ADMIN_EMAIL = "mail.sajjadahmed@gmail.com";
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const rtdb = firebase.database();
+
+    // App State
+    let currentUser = null;
+    let isUserAdmin = false;
+    let currentView = 'viewer';
+    let currentAdminTab = 'prompts';
+    let currentCat = 'all';
+    let currentTab = 'all';
+    let searchQuery = '';
+
+    let prompts = [];
+    let categories = [];
+    const defaultAdConfig = {
+      provider: 'admob',
+      enabled: true,
+      admobAdUnitId: 'ca-app-pub-3940256099942544/5224354917',
+      startioAppId: '208394102',
+      unityGameId: '5128394',
+      unityPlacementId: 'rewardedVideo',
+      wortiseAppId: 'test-app-id',
+      wortiseAdUnitId: 'test-ad-unit',
+      customVideoUrl: '',
+      customVideoDurationSec: 15,
+      dailyUnlockLimit: 20
+    };
+    let adConfig = { ...defaultAdConfig };
+    try {
+      const savedAd = localStorage.getItem('ps_ad_config');
+      if (savedAd) adConfig = { ...defaultAdConfig, ...JSON.parse(savedAd) };
+    } catch (e) {}
+
+    let favoriteIds = JSON.parse(localStorage.getItem('ps_favorites') || '[]');
+    let unlockedIds = JSON.parse(localStorage.getItem('ps_unlocks') || '[]');
+    let activeRewardPrompt = null;
+    let rewardTimerInterval = null;
+    let authMode = 'signin';
+
+    // Toast Function
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastBox');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<i class="${type==='success'?'ri-checkbox-circle-fill':type==='error'?'ri-error-warning-fill':'ri-information-fill'}"></i> <span>${escapeHtml(msg)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => { toast.remove(); }, 3200);
+    }
+
+    // Modal Helpers
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    // Firebase Auth State Listener
+    auth.onAuthStateChanged(user => {
+      currentUser = user;
+      isUserAdmin = Boolean(user && user.email && user.email.toLowerCase().trim() === FIXED_ADMIN_EMAIL.toLowerCase());
+
+      const loggedOutBox = document.getElementById('loggedOutBox');
+      const loggedInBox = document.getElementById('loggedInBox');
+      const roleBadge = document.getElementById('roleBadge');
+      const adminSwitcher = document.getElementById('adminSwitcher');
+
+      if (user) {
+        loggedOutBox.style.display = 'none';
+        loggedInBox.style.display = 'flex';
+        document.getElementById('userEmailLabel').textContent = user.displayName || user.email;
+        document.getElementById('userAvatarCircle').textContent = (user.email || 'U')[0].toUpperCase();
+
+        if (isUserAdmin) {
+          roleBadge.textContent = 'Admin Active';
+          roleBadge.className = 'brand-badge admin';
+          adminSwitcher.classList.add('active');
+        } else {
+          roleBadge.textContent = 'Member';
+          roleBadge.className = 'brand-badge';
+          adminSwitcher.classList.remove('active');
+          if (currentView === 'admin') showView('viewer');
+        }
+
+        // Sync Favorites from RTDB
+        rtdb.ref(`PROMPT_MANAGER/users/${user.uid}/favorites`).on('value', snap => {
+          const val = snap.val();
+          if (Array.isArray(val)) {
+            favoriteIds = val;
+            updateFavBadges();
+            renderPrompts();
+          }
+        });
+      } else {
+        loggedOutBox.style.display = 'block';
+        loggedInBox.style.display = 'none';
+        roleBadge.textContent = 'AI Library';
+        roleBadge.className = 'brand-badge';
+        adminSwitcher.classList.remove('active');
+        if (currentView === 'admin') showView('viewer');
+      }
+      renderPrompts();
+      if (currentView === 'admin') renderAdminTable();
+    });
+
+    // View Switching (Fast open viewer mode enforced)
+    function showView(view) {
+      if (view === 'admin' && !isUserAdmin) {
+        showToast('Admin Studio is restricted to authorized admin.', 'error');
+        view = 'viewer';
+      }
+      currentView = view;
+      document.getElementById('viewerSection').style.display = view === 'viewer' ? 'block' : 'none';
+      document.getElementById('adminSection').style.display = view === 'admin' ? 'block' : 'none';
+      document.getElementById('adminSection').classList.toggle('active', view === 'admin');
+
+      document.getElementById('btnViewViewer').classList.toggle('active', view === 'viewer');
+      document.getElementById('btnViewAdmin').classList.toggle('active', view === 'admin');
+
+      if (view === 'admin') {
+        renderAdminTable();
+        renderAdminCategoriesTable();
+      }
+    }
+
+    // Switch Admin Tabs (Prompts vs Categories vs Ads)
+    function switchAdminTab(tab) {
+      currentAdminTab = tab;
+      document.getElementById('btnAdminTabPrompts').classList.toggle('active', tab === 'prompts');
+      document.getElementById('btnAdminTabCategories').classList.toggle('active', tab === 'categories');
+      document.getElementById('btnAdminTabAds').classList.toggle('active', tab === 'ads');
+
+      document.getElementById('adminTabContentPrompts').style.display = tab === 'prompts' ? 'block' : 'none';
+      document.getElementById('adminTabContentCategories').style.display = tab === 'categories' ? 'block' : 'none';
+      document.getElementById('adminTabContentAds').style.display = tab === 'ads' ? 'block' : 'none';
+
+      if (tab === 'categories') renderAdminCategoriesTable();
+    }
+
+    // RTDB: Prompts Listener
+    rtdb.ref('PROMPT_MANAGER/prompts_public').on('value', snap => {
+      const data = snap.val();
+      prompts = data ? Object.values(data) : [];
+      renderPrompts();
+      updateStats();
+      if (currentView === 'admin') renderAdminTable();
+    });
+
+    // RTDB: Categories Listener
+    rtdb.ref('PROMPT_MANAGER/categories').on('value', snap => {
+      const data = snap.val();
+      categories = data ? Object.values(data) : [];
+      renderCategoryChips();
+      populateCategoryDropdown();
+      document.getElementById('adminStatCats').textContent = categories.length;
+      document.getElementById('adminCatTabCount').textContent = categories.length;
+      if (currentAdminTab === 'categories') renderAdminCategoriesTable();
+    });
+
+    // RTDB: Ad Settings Listener
+    rtdb.ref('PROMPT_MANAGER/settings/rewardAd').on('value', snap => {
+      const data = snap.val();
+      if (data && typeof data === 'object') {
+        adConfig = { ...adConfig, ...data };
+        populateAdForm();
+      }
+    });
+
+    // Update Global KPIs
+    function updateStats() {
+      const pub = prompts.filter(p => p.published !== false);
+      const views = prompts.reduce((a,b) => a + (b.views||0), 0);
+      const copies = prompts.reduce((a,b) => a + (b.copies||0), 0);
+
+      document.getElementById('kpiTotal').textContent = pub.length;
+      document.getElementById('kpiViews').textContent = views.toLocaleString();
+      document.getElementById('adminStatPrompts').textContent = prompts.length;
+      document.getElementById('adminPromptTabCount').textContent = prompts.length;
+      document.getElementById('adminStatViews').textContent = views.toLocaleString();
+      document.getElementById('adminStatCopies').textContent = copies.toLocaleString();
+      updateFavBadges();
+    }
+
+    function updateFavBadges() {
+      const count = favoriteIds.length;
+      document.getElementById('kpiFavs').textContent = count;
+      document.getElementById('favCountBadge').textContent = count;
+    }
+
+    // Category Chips in Viewer
+    function renderCategoryChips() {
+      const box = document.getElementById('catChipsContainer');
+      let html = `<button class="cat-chip ${currentCat==='all'?'active':''}" onclick="setCategory('all')">
+        <i class="ri-apps-line"></i> All Categories
+      </button>`;
+      categories.filter(c => c.enabled !== false).forEach(c => {
+        html += `<button class="cat-chip ${currentCat===c.id?'active':''}" onclick="setCategory('${c.id}')">
+          <i class="${c.icon || 'ri-folder-line'}"></i> ${escapeHtml(c.name)}
+        </button>`;
+      });
+      box.innerHTML = html;
+    }
+
+    function populateCategoryDropdown() {
+      const select = document.getElementById('pfCategory');
+      select.innerHTML = categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    }
+
+    function setCategory(id) {
+      currentCat = id;
+      renderCategoryChips();
+      renderPrompts();
+    }
+
+    function setTabFilter(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+      });
+      renderPrompts();
+    }
+
+    function handleSearch() {
+      searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+      renderPrompts();
+    }
+
+    // Favorite Toggle
+    function toggleFavorite(id, e) {
+      if (e) e.stopPropagation();
+      const idx = favoriteIds.indexOf(id);
+      if (idx > -1) {
+        favoriteIds.splice(idx, 1);
+        showToast('Removed from favorites');
+      } else {
+        favoriteIds.push(id);
+        showToast('Saved to your favorites ⭐', 'success');
+      }
+      localStorage.setItem('ps_favorites', JSON.stringify(favoriteIds));
+      if (currentUser) {
+        rtdb.ref(`PROMPT_MANAGER/users/${currentUser.uid}/favorites`).set(favoriteIds).catch(() => {});
+      }
+      updateFavBadges();
+      renderPrompts();
+    }
+
+    // Render Prompts Grid in Viewer
+    function renderPrompts() {
+      const grid = document.getElementById('promptsGrid');
+      let list = prompts.filter(p => p.published !== false);
+
+      if (currentCat !== 'all') {
+        list = list.filter(p => p.categoryId === currentCat);
+      }
+
+      if (currentTab === 'favorites') {
+        list = list.filter(p => favoriteIds.includes(p.id));
+      } else if (currentTab === 'latest') {
+        list = [...list].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+      } else if (currentTab === 'popular') {
+        list = [...list].sort((a,b) => (b.views||0) - (a.views||0));
+      } else if (currentTab === 'featured') {
+        list = list.filter(p => p.featured);
+      } else if (currentTab === 'free') {
+        list = list.filter(p => p.accessType !== 'Reward Locked');
+      }
+
+      if (searchQuery) {
+        list = list.filter(p =>
+          (p.title && p.title.toLowerCase().includes(searchQuery)) ||
+          (p.description && p.description.toLowerCase().includes(searchQuery)) ||
+          (p.fullContent && p.fullContent.toLowerCase().includes(searchQuery))
+        );
+      }
+
+      document.getElementById('countIndicator').textContent = list.length;
+
+      if (list.length === 0) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--text-muted)">
+          <i class="ri-inbox-line" style="font-size:2.4rem;display:block;margin-bottom:8px"></i>
+          <p>No prompts match the current filter.</p>
+        </div>`;
+        return;
+      }
+
+      grid.innerHTML = list.map(p => {
+        const isFav = favoriteIds.includes(p.id);
+        const isUnlocked = isUserAdmin || p.accessType !== 'Reward Locked' || unlockedIds.includes(p.id);
+        const cat = categories.find(c => c.id === p.categoryId);
+        const isTrending = Boolean((p.recentViews24h && p.recentViews24h > 50) || (p.views > 50));
+
+        return `
+          <div class="prompt-card" onclick="openDetailModal('${p.id}')">
+            <div class="card-thumb-wrap">
+              ${p.thumbnail ? `<img src="${p.thumbnail}" class="card-thumb" alt="" loading="lazy" />` : `<div style="width:100%;height:100%;display:grid;place-items:center;color:var(--text-muted)"><i class="ri-image-line" style="font-size:2.2rem"></i></div>`}
+              <div class="card-badge-left">
+                ${!isUnlocked ? `<span class="badge badge-locked"><i class="ri-lock-fill"></i> Locked</span>` : ''}
+                ${isTrending ? `<span class="badge badge-trending"><i class="ri-fire-fill"></i> Trending</span>` : ''}
+                ${p.featured ? `<span class="badge badge-featured"><i class="ri-sparkling-fill"></i> Featured</span>` : ''}
+                ${p.popular ? `<span class="badge badge-hot"><i class="ri-fire-line"></i> Hot</span>` : ''}
+              </div>
+              <div class="card-overlay-btns">
+                <button class="icon-btn-blur ${isFav?'favorited':''}" onclick="toggleFavorite('${p.id}', event)" title="Favorite">
+                  <i class="${isFav?'ri-star-fill':'ri-star-line'}"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="card-body">
+              <div>
+                <div class="card-meta">
+                  <span class="cat">${cat ? escapeHtml(cat.name) : 'General'}</span>
+                  <span>·</span>
+                  <span>${escapeHtml(p.type || 'Text')}</span>
+                </div>
+                <h3 class="card-title" style="margin-top:6px">${escapeHtml(p.title)}</h3>
+                <p class="card-desc" style="margin-top:4px">${escapeHtml(p.description || p.fullContent || '')}</p>
+              </div>
+
+              <div class="card-footer">
+                <div><span>${(p.views||0).toLocaleString()} views</span> · <span>${(p.copies||0).toLocaleString()} copies</span></div>
+                <div>
+                  ${!isUnlocked
+                    ? `<button class="btn btn-amber" style="padding:4px 10px;font-size:0.75rem" onclick="openRewardAdModal('${p.id}', event)"><i class="ri-play-circle-fill"></i> Unlock</button>`
+                    : `<button class="btn btn-primary" style="padding:4px 10px;font-size:0.75rem" onclick="copyPrompt('${p.id}', event)"><i class="ri-file-copy-line"></i> Copy</button>`}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Copy Prompt
+    function copyPrompt(id, e) {
+      if (e) e.stopPropagation();
+      const p = prompts.find(x => x.id === id);
+      if (!p) return;
+      navigator.clipboard.writeText(p.fullContent || '').then(() => {
+        showToast('Prompt copied to clipboard!', 'success');
+        rtdb.ref(`PROMPT_MANAGER/prompts_public/${id}/copies`).transaction(v => (v||0)+1);
+      });
+    }
+
+    // Detail Modal with Trending Indicator (>50 views in 24h)
+    function openDetailModal(id) {
+      const p = prompts.find(x => x.id === id);
+      if (!p) return;
+      rtdb.ref(`PROMPT_MANAGER/prompts_public/${id}/views`).transaction(v => (v||0)+1);
+
+      const isUnlocked = isUserAdmin || p.accessType !== 'Reward Locked' || unlockedIds.includes(p.id);
+      const cat = categories.find(c => c.id === p.categoryId);
+      const isTrending = Boolean((p.recentViews24h && p.recentViews24h > 50) || (p.views > 50));
+      const views24h = p.recentViews24h || p.views;
+
+      document.getElementById('detailTitle').textContent = p.title;
+      document.getElementById('detailBody').innerHTML = `
+        <div style="font-size:0.8rem;color:var(--text-muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="color:#818cf8;font-weight:600">${cat ? escapeHtml(cat.name) : 'General'}</span>
+          <span>·</span>
+          <span>${escapeHtml(p.type || 'Text')}</span>
+          ${isTrending ? `<span style="background:rgba(244,63,94,0.15);color:#f43f5e;border:1px solid rgba(244,63,94,0.3);padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:700;display:inline-flex;align-items:center;gap:4px"><i class="ri-fire-fill"></i> Trending (${views24h} views in 24h)</span>` : ''}
+          ${p.recommendedModel ? `<span style="color:var(--text-secondary)">· Model: ${escapeHtml(p.recommendedModel)}</span>` : ''}
+        </div>
+        ${p.thumbnail ? `<div style="max-height:240px;border-radius:8px;overflow:hidden;background:#030614;border:1px solid var(--border-color)"><img src="${p.thumbnail}" style="width:100%;max-height:240px;object-fit:cover" /></div>` : ''}
+        <p style="font-size:0.88rem;color:var(--text-secondary)">${escapeHtml(p.description || '')}</p>
+        <div style="margin-top:6px">
+          ${!isUnlocked
+            ? `<div style="background:#060919;border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:24px;text-align:center">
+                <i class="ri-lock-fill" style="font-size:2rem;color:var(--accent-amber)"></i>
+                <h4 style="margin:8px 0 4px">This Prompt is Reward Locked</h4>
+                <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:14px">Watch a brief 15s sponsored ad to unlock full access for 24 hours.</p>
+                <button class="btn btn-amber" onclick="openRewardAdModal('${p.id}')"><i class="ri-play-circle-fill"></i> Watch Ad to Unlock</button>
+              </div>`
+            : `<div class="prompt-text-box">${escapeHtml(p.fullContent || '')}</div>`}
+        </div>
+      `;
+
+      document.getElementById('detailCopyBtn').onclick = () => {
+        if (!isUnlocked) {
+          openRewardAdModal(p.id);
+        } else {
+          copyPrompt(p.id);
+        }
+      };
+
+      document.getElementById('detailShareBtn').onclick = () => {
+        navigator.clipboard.writeText(window.location.href);
+        showToast('Link copied to clipboard!');
+      };
+
+      openModal('detailModal');
+    }
+
+    // ================= REWARD VIDEO AD FLOW =================
+    function openRewardAdModal(id, e) {
+      if (e) e.stopPropagation();
+      closeModal('detailModal');
+      const p = prompts.find(x => x.id === id);
+      if (!p) return;
+      activeRewardPrompt = p;
+
+      document.getElementById('rewardModalPromptTitle').textContent = p.title;
+
+      let netName = 'Google AdMob Rewarded Video';
+      let watermark = `Ad Unit: ${adConfig.admobAdUnitId || 'ca-app-pub-dev'}`;
+      if (adConfig.provider === 'startio') {
+        netName = 'Start.io Rewarded Video';
+        watermark = `App ID: ${adConfig.startioAppId || '208394102'}`;
+      } else if (adConfig.provider === 'unity') {
+        netName = 'UnityAds Rewarded Video';
+        watermark = `Game ID: ${adConfig.unityGameId} · Placement: ${adConfig.unityPlacementId}`;
+      } else if (adConfig.provider === 'wortise') {
+        netName = 'Wortise Rewarded Ads';
+        watermark = `App: ${adConfig.wortiseAppId} · AdUnit: ${adConfig.wortiseAdUnitId}`;
+      } else if (adConfig.provider === 'custom_video') {
+        netName = 'Sponsored Video Showcase';
+        watermark = 'Direct Stream';
+      }
+
+      document.getElementById('rewardModalNetworkName').textContent = netName;
+      document.getElementById('rewardAdWatermark').textContent = watermark;
+
+      let left = adConfig.customVideoDurationSec || 15;
+      document.getElementById('rewardAdTimer').textContent = left + 's';
+      document.getElementById('claimRewardBtn').disabled = true;
+
+      if (rewardTimerInterval) clearInterval(rewardTimerInterval);
+      rewardTimerInterval = setInterval(() => {
+        left -= 1;
+        document.getElementById('rewardAdTimer').textContent = left + 's';
+        if (left <= 0) {
+          clearInterval(rewardTimerInterval);
+          document.getElementById('rewardAdTimer').textContent = '✓ Ready to Claim!';
+          document.getElementById('claimRewardBtn').disabled = false;
+        }
+      }, 1000);
+
+      openModal('rewardModal');
+    }
+
+    function closeRewardAdModal() {
+      if (rewardTimerInterval) clearInterval(rewardTimerInterval);
+      closeModal('rewardModal');
+    }
+
+    function claimRewardUnlock() {
+      if (!activeRewardPrompt) return;
+      if (!unlockedIds.includes(activeRewardPrompt.id)) {
+        unlockedIds.push(activeRewardPrompt.id);
+        localStorage.setItem('ps_unlocks', JSON.stringify(unlockedIds));
+      }
+      showToast(`"${activeRewardPrompt.title}" unlocked for 24 hours!`, 'success');
+      closeRewardAdModal();
+      openDetailModal(activeRewardPrompt.id);
+      renderPrompts();
+    }
+
+    // ================= ADMIN PROMPT CRUD (ADD, EDIT, DELETE) =================
+    function openAddPromptModal() {
+      if (!isUserAdmin) {
+        showToast('Admin privilege required.', 'error');
+        return;
+      }
+      document.getElementById('promptFormModalTitle').textContent = 'Add New Prompt';
+      document.getElementById('pfPromptId').value = '';
+      document.getElementById('pfTitle').value = '';
+      document.getElementById('pfType').value = 'Image Generation';
+      document.getElementById('pfAccessType').value = 'Free';
+      document.getElementById('pfModel').value = 'Gemini 2.5 Pro';
+      document.getElementById('pfThumbnail').value = '';
+      document.getElementById('pfDescription').value = '';
+      document.getElementById('pfContent').value = '';
+      document.getElementById('pfFeatured').checked = false;
+      document.getElementById('pfPopular').checked = false;
+      document.getElementById('pfPublished').checked = true;
+      document.getElementById('pfSubmitBtn').innerHTML = '<i class="ri-check-line"></i> Create Prompt';
+      populateCategoryDropdown();
+      openModal('promptFormModal');
+    }
+
+    function openEditPromptModal(id) {
+      if (!isUserAdmin) return;
+      const p = prompts.find(x => x.id === id);
+      if (!p) return;
+
+      document.getElementById('promptFormModalTitle').textContent = 'Edit Prompt';
+      document.getElementById('pfPromptId').value = p.id;
+      document.getElementById('pfTitle').value = p.title || '';
+      populateCategoryDropdown();
+      document.getElementById('pfCategory').value = p.categoryId || (categories[0] ? categories[0].id : '');
+      document.getElementById('pfType').value = p.type || 'Text Generation';
+      document.getElementById('pfAccessType').value = p.accessType || 'Free';
+      document.getElementById('pfModel').value = p.recommendedModel || '';
+      document.getElementById('pfThumbnail').value = p.thumbnail || '';
+      document.getElementById('pfDescription').value = p.description || '';
+      document.getElementById('pfContent').value = p.fullContent || '';
+      document.getElementById('pfFeatured').checked = Boolean(p.featured);
+      document.getElementById('pfPopular').checked = Boolean(p.popular);
+      document.getElementById('pfPublished').checked = p.published !== false;
+      document.getElementById('pfSubmitBtn').innerHTML = '<i class="ri-save-line"></i> Save Changes';
+
+      openModal('promptFormModal');
+    }
+
+    async function handlePromptFormSubmit(e) {
+      e.preventDefault();
+      if (!isUserAdmin) return;
+
+      const editId = document.getElementById('pfPromptId').value;
+      const id = editId || ('p_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6));
+
+      const promptData = {
+        id,
+        title: (document.getElementById('pfTitle').value || '').trim(),
+        categoryId: document.getElementById('pfCategory').value || (categories[0] ? categories[0].id : ''),
+        type: document.getElementById('pfType').value || 'Text Generation',
+        accessType: document.getElementById('pfAccessType').value || 'Free',
+        recommendedModel: (document.getElementById('pfModel').value || '').trim(),
+        thumbnail: (document.getElementById('pfThumbnail').value || '').trim(),
+        description: (document.getElementById('pfDescription').value || '').trim(),
+        fullContent: (document.getElementById('pfContent').value || '').trim(),
+        featured: Boolean(document.getElementById('pfFeatured').checked),
+        popular: Boolean(document.getElementById('pfPopular').checked),
+        published: Boolean(document.getElementById('pfPublished').checked),
+        updatedAt: Date.now()
+      };
+
+      if (!editId) {
+        promptData.createdAt = Date.now();
+        promptData.views = 0;
+        promptData.copies = 0;
+      }
+
+      // Safeguard: Ensure no undefined property exists in payload
+      Object.keys(promptData).forEach(k => {
+        if (promptData[k] === undefined) promptData[k] = '';
+      });
+
+      // Update in-memory list immediately
+      const existingIdx = prompts.findIndex(p => p.id === id);
+      if (existingIdx >= 0) {
+        prompts[existingIdx] = { ...prompts[existingIdx], ...promptData };
+      } else {
+        prompts.unshift(promptData);
+      }
+      renderPrompts();
+      if (currentView === 'admin') renderAdminTable();
+
+      try {
+        await rtdb.ref(`PROMPT_MANAGER/prompts_public/${id}`).update(promptData);
+        showToast(editId ? 'Prompt updated in Firebase!' : 'New prompt created and saved to Firebase!', 'success');
+        closeModal('promptFormModal');
+      } catch (err) {
+        console.warn('Firebase save prompt error:', err);
+        const isPermDenied = err.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
+        if (isPermDenied) {
+          showToast('Prompt saved locally! (Sign in as mail.sajjadahmed@gmail.com for Firebase cloud sync).', 'info');
+          closeModal('promptFormModal');
+        } else {
+          showToast(`Error saving prompt: ${err.message}`, 'error');
+        }
+      }
+    }
+
+    function deletePromptFromAdmin(id) {
+      if (!isUserAdmin) return;
+      const p = prompts.find(x => x.id === id);
+      if (!p) return;
+      if (confirm(`Permanently delete "${p.title}" from Firebase Realtime Database?`)) {
+        rtdb.ref(`PROMPT_MANAGER/prompts_public/${id}`).remove().then(() => {
+          showToast('Prompt deleted successfully.', 'success');
+        }).catch(err => {
+          showToast(`Delete error: ${err.message}`, 'error');
+        });
+      }
+    }
+
+    function togglePublishStatus(id) {
+      if (!isUserAdmin) return;
+      const p = prompts.find(x => x.id === id);
+      if (!p) return;
+      const next = p.published === false;
+      rtdb.ref(`PROMPT_MANAGER/prompts_public/${id}/published`).set(next).then(() => {
+        showToast(next ? 'Prompt published to viewer.' : 'Prompt moved to draft.', 'info');
+      });
+    }
+
+    // Render Admin Prompts Table
+    function renderAdminTable() {
+      const tbody = document.getElementById('adminPromptsTableBody');
+      if (prompts.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">No prompts in database yet. Click "+ Add New Prompt" above to create one.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = prompts.map(p => {
+        const cat = categories.find(c => c.id === p.categoryId);
+        return `
+          <tr>
+            <td>
+              <strong>${escapeHtml(p.title)}</strong>
+              <div style="font-size:0.75rem;color:var(--text-muted)">ID: ${p.id}</div>
+            </td>
+            <td>${cat ? escapeHtml(cat.name) : '—'}</td>
+            <td>${escapeHtml(p.type || 'Text')}</td>
+            <td><span class="badge ${p.accessType==='Reward Locked'?'badge-locked':'badge-featured'}">${escapeHtml(p.accessType||'Free')}</span></td>
+            <td>${(p.views||0).toLocaleString()} views · ${(p.copies||0).toLocaleString()} copies</td>
+            <td>
+              <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.75rem" onclick="togglePublishStatus('${p.id}')">
+                <span class="badge" style="background:${p.published!==false?'rgba(16,185,129,0.15)':'rgba(100,116,139,0.2)'};color:${p.published!==false?'#34d399':'#94a3b8'}">
+                  ${p.published!==false?'Published':'Draft'}
+                </span>
+              </button>
+            </td>
+            <td style="text-align:right">
+              <button class="btn btn-ghost" style="padding:4px 8px" onclick="openDetailModal('${p.id}')" title="Preview"><i class="ri-eye-line"></i></button>
+              <button class="btn btn-ghost" style="padding:4px 8px" onclick="openEditPromptModal('${p.id}')" title="Edit"><i class="ri-edit-line" style="color:#818cf8"></i></button>
+              <button class="btn btn-ghost" style="padding:4px 8px" onclick="deletePromptFromAdmin('${p.id}')" title="Delete"><i class="ri-delete-bin-line" style="color:var(--accent-rose)"></i></button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ================= ADMIN CATEGORY CRUD (ADD, EDIT, DELETE) =================
+    function openAddCategoryModal() {
+      if (!isUserAdmin) return;
+      document.getElementById('catModalTitle').textContent = 'Add Category';
+      document.getElementById('cfCatId').value = '';
+      document.getElementById('cfName').value = '';
+      document.getElementById('cfIcon').value = 'ri-folder-line';
+      document.getElementById('cfDesc').value = '';
+      document.getElementById('cfOrder').value = categories.length + 1;
+      document.getElementById('cfEnabled').checked = true;
+      openModal('categoryFormModal');
+    }
+
+    function openEditCategoryModal(id) {
+      if (!isUserAdmin) return;
+      const c = categories.find(x => x.id === id);
+      if (!c) return;
+      document.getElementById('catModalTitle').textContent = 'Edit Category';
+      document.getElementById('cfCatId').value = c.id;
+      document.getElementById('cfName').value = c.name || '';
+      document.getElementById('cfIcon').value = c.icon || 'ri-folder-line';
+      document.getElementById('cfDesc').value = c.description || '';
+      document.getElementById('cfOrder').value = c.displayOrder || 1;
+      document.getElementById('cfEnabled').checked = c.enabled !== false;
+      openModal('categoryFormModal');
+    }
+
+    async function handleCategoryFormSubmit(e) {
+      e.preventDefault();
+      if (!isUserAdmin) return;
+
+      const editId = document.getElementById('cfCatId').value;
+      const id = editId || ('cat_' + Date.now().toString(36));
+
+      const catData = {
+        id,
+        name: document.getElementById('cfName').value.trim(),
+        icon: document.getElementById('cfIcon').value,
+        description: document.getElementById('cfDesc').value.trim(),
+        displayOrder: parseInt(document.getElementById('cfOrder').value) || 1,
+        enabled: document.getElementById('cfEnabled').checked
+      };
+
+      try {
+        await rtdb.ref(`PROMPT_MANAGER/categories/${id}`).set(catData);
+        showToast(editId ? 'Category updated!' : 'Category created!', 'success');
+        closeModal('categoryFormModal');
+      } catch (err) {
+        showToast(`Category error: ${err.message}`, 'error');
+      }
+    }
+
+    function deleteCategoryFromAdmin(id) {
+      if (!isUserAdmin) return;
+      const c = categories.find(x => x.id === id);
+      if (!c) return;
+      if (confirm(`Delete category "${c.name}"? Prompts in this category will not be removed.`)) {
+        rtdb.ref(`PROMPT_MANAGER/categories/${id}`).remove().then(() => {
+          showToast('Category deleted.', 'success');
+        });
+      }
+    }
+
+    function renderAdminCategoriesTable() {
+      const tbody = document.getElementById('adminCategoriesTableBody');
+      if (categories.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No categories yet. Click "+ Add Category" to create one.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = categories.map(c => `
+        <tr>
+          <td><i class="${c.icon || 'ri-folder-line'}" style="color:#818cf8;margin-right:8px"></i><strong>${escapeHtml(c.name)}</strong></td>
+          <td style="color:var(--text-secondary)">${escapeHtml(c.description || '—')}</td>
+          <td>${c.displayOrder || 1}</td>
+          <td><span class="badge" style="background:${c.enabled!==false?'rgba(16,185,129,0.15)':'rgba(100,116,139,0.2)'};color:${c.enabled!==false?'#34d399':'#94a3b8'}">${c.enabled!==false?'Active':'Hidden'}</span></td>
+          <td style="text-align:right">
+            <button class="btn btn-ghost" style="padding:4px 8px" onclick="openEditCategoryModal('${c.id}')"><i class="ri-edit-line" style="color:#818cf8"></i></button>
+            <button class="btn btn-ghost" style="padding:4px 8px" onclick="deleteCategoryFromAdmin('${c.id}')"><i class="ri-delete-bin-line" style="color:var(--accent-rose)"></i></button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ================= ADMIN REWARDED ADS CONFIGURATION =================
+    function populateAdForm() {
+      document.getElementById('adCfgProvider').value = adConfig.provider || 'admob';
+      document.getElementById('adCfgEnabled').checked = adConfig.enabled !== false;
+      document.getElementById('adCfgAdmobAdUnitId').value = adConfig.admobAdUnitId || '';
+      document.getElementById('adCfgStartioAppId').value = adConfig.startioAppId || '';
+      document.getElementById('adCfgUnityGameId').value = adConfig.unityGameId || '';
+      document.getElementById('adCfgUnityPlacementId').value = adConfig.unityPlacementId || '';
+      document.getElementById('adCfgWortiseAppId').value = adConfig.wortiseAppId || '';
+      document.getElementById('adCfgWortiseAdUnitId').value = adConfig.wortiseAdUnitId || '';
+      document.getElementById('adCfgCustomVideoUrl').value = adConfig.customVideoUrl || '';
+      document.getElementById('adCfgCustomDuration').value = adConfig.customVideoDurationSec || 15;
+    }
+
+    async function saveAdSettings(e) {
+      e.preventDefault();
+      if (!isUserAdmin) return;
+
+      const newSettings = {
+        provider: document.getElementById('adCfgProvider').value || 'admob',
+        enabled: Boolean(document.getElementById('adCfgEnabled').checked),
+        admobAdUnitId: (document.getElementById('adCfgAdmobAdUnitId').value || '').trim(),
+        startioAppId: (document.getElementById('adCfgStartioAppId').value || '').trim(),
+        unityGameId: (document.getElementById('adCfgUnityGameId').value || '').trim(),
+        unityPlacementId: (document.getElementById('adCfgUnityPlacementId').value || '').trim(),
+        wortiseAppId: (document.getElementById('adCfgWortiseAppId').value || '').trim(),
+        wortiseAdUnitId: (document.getElementById('adCfgWortiseAdUnitId').value || '').trim(),
+        customVideoUrl: (document.getElementById('adCfgCustomVideoUrl').value || '').trim(),
+        customVideoDurationSec: parseInt(document.getElementById('adCfgCustomDuration').value) || 15,
+        dailyUnlockLimit: 20
+      };
+
+      // Safeguard: Ensure no undefined property exists
+      Object.keys(newSettings).forEach(k => {
+        if (newSettings[k] === undefined) newSettings[k] = '';
+      });
+
+      // Always save locally first so admin never loses ad credentials
+      adConfig = { ...adConfig, ...newSettings };
+      try {
+        localStorage.setItem('ps_ad_config', JSON.stringify(adConfig));
+      } catch (e) {}
+
+      try {
+        await rtdb.ref('PROMPT_MANAGER/settings/rewardAd').set(newSettings);
+        showToast('Ad network configuration saved to Firebase & local storage!', 'success');
+      } catch (err) {
+        console.warn('RTDB saveAdSettings notice:', err);
+        const isPermDenied = err.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
+        if (isPermDenied) {
+          showToast('Ad settings saved locally in browser! (Sign in as mail.sajjadahmed@gmail.com for Firebase cloud sync).', 'info');
+        } else {
+          showToast(`Ad settings saved locally (${err.message})`, 'info');
+        }
+      }
+    }
+
+    function testRewardAdFlow() {
+      const target = prompts.find(p => p.accessType === 'Reward Locked') || prompts[0];
+      if (target) {
+        openRewardAdModal(target.id);
+      } else {
+        showToast('Please add at least one prompt to test ad unlock.', 'error');
+      }
+    }
+
+    // ================= AUTH MODAL (SIGN IN / REGISTER / FORGOT PASSWORD) =================
+    function openAuthModal(mode = 'signin') {
+      authMode = mode;
+      switchAuthTab(mode);
+      document.getElementById('authAlert').style.display = 'none';
+      openModal('authModal');
+    }
+
+    function switchAuthTab(tab) {
+      authMode = tab;
+      document.getElementById('tabBtnSignIn').classList.toggle('active', tab === 'signin');
+      document.getElementById('tabBtnSignUp').classList.toggle('active', tab === 'signup');
+
+      document.getElementById('authTabButtons').style.display = tab === 'forgot' ? 'none' : 'flex';
+      document.getElementById('groupDisplayName').style.display = tab === 'signup' ? 'flex' : 'none';
+      document.getElementById('groupPassword').style.display = tab === 'forgot' ? 'none' : 'flex';
+      document.getElementById('forgotBackLink').style.display = tab === 'forgot' ? 'block' : 'none';
+
+      document.getElementById('authModalTitle').textContent =
+        tab === 'signin' ? 'Sign In' : tab === 'signup' ? 'Create Account' : 'Reset Password';
+
+      document.getElementById('authSubmitBtn').textContent =
+        tab === 'signin' ? 'Sign In' : tab === 'signup' ? 'Create Free Account' : 'Send Reset Link';
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      const displayName = document.getElementById('authDisplayName').value.trim();
+      const alertBox = document.getElementById('authAlert');
+      alertBox.style.display = 'none';
+
+      try {
+        if (authMode === 'signin') {
+          await auth.signInWithEmailAndPassword(email, password);
+          showToast('Signed in successfully!', 'success');
+          closeModal('authModal');
+        } else if (authMode === 'signup') {
+          if (password.length < 6) throw new Error('Password must be at least 6 characters.');
+          const res = await auth.createUserWithEmailAndPassword(email, password);
+          if (displayName && res.user) {
+            await res.user.updateProfile({ displayName });
+          }
+          showToast('Account created successfully!', 'success');
+          closeModal('authModal');
+        } else if (authMode === 'forgot') {
+          await auth.sendPasswordResetEmail(email);
+          showToast('Password reset link sent! Check your inbox.', 'info');
+          switchAuthTab('signin');
+        }
+      } catch (err) {
+        alertBox.textContent = err.message || 'Authentication failed.';
+        alertBox.style.display = 'block';
+      }
+    }
+
+    function doSignOut() {
+      auth.signOut().then(() => {
+        showToast('Signed out.');
+      });
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

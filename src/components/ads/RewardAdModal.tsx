@@ -79,16 +79,41 @@ export const RewardAdModal: React.FC = () => {
   // Determine provider label & branding
   const getProviderInfo = () => {
     switch (adConfig.provider) {
-      case 'unity':
-        return { name: 'Unity Ads Rewarded SDK', color: 'text-sky-400', badge: 'Unity Ads' };
+      case 'admob':
+        return {
+          name: 'Google AdMob Rewarded Video',
+          idText: `Ad Unit: ${adConfig.admobAdUnitId || 'ca-app-pub-3940256099942544/5224354917'}`,
+          color: 'text-emerald-400',
+          badge: 'Google AdMob',
+        };
       case 'startio':
-        return { name: 'Start.io Interactive Ad', color: 'text-amber-400', badge: 'Start.io' };
-      case 'adsterra':
-        return { name: 'Adsterra Video Network', color: 'text-pink-400', badge: 'Adsterra' };
-      case 'google':
-        return { name: 'Google Rewarded Ads (AdMob)', color: 'text-emerald-400', badge: 'Google Ads' };
+        return {
+          name: 'Start.io Rewarded Video',
+          idText: `App ID: ${adConfig.startioAppId || '208394102'}`,
+          color: 'text-amber-400',
+          badge: 'Start.io',
+        };
+      case 'unity':
+        return {
+          name: 'UnityAds Rewarded Video',
+          idText: `Placement: ${adConfig.unityPlacementId || 'rewardedVideo'} · Game: ${adConfig.unityGameId || '5128394'}`,
+          color: 'text-sky-400',
+          badge: 'UnityAds',
+        };
+      case 'wortise':
+        return {
+          name: 'Wortise Rewarded Video',
+          idText: `AdUnit: ${adConfig.wortiseAdUnitId || 'test-unit'} · App: ${adConfig.wortiseAppId || 'test-app'}`,
+          color: 'text-violet-400',
+          badge: 'Wortise',
+        };
       default:
-        return { name: 'Sponsored Video Network', color: 'text-indigo-400', badge: 'Sponsored' };
+        return {
+          name: 'Sponsored Video Network',
+          idText: adConfig.customVideoUrl ? 'Custom Video Showcase' : 'Direct Video Stream',
+          color: 'text-indigo-400',
+          badge: 'Sponsored',
+        };
     }
   };
 
@@ -156,7 +181,7 @@ export const RewardAdModal: React.FC = () => {
 
             {/* Ad Network Watermark */}
             <div className="pt-2 text-[11px] text-slate-500 flex items-center gap-2">
-              <span>Placement: {adConfig.placementId || 'ca-app-pub-dev'}</span>
+              <span className="font-mono text-slate-400">{provider.idText}</span>
               <span>·</span>
               <span className="text-indigo-400 font-mono">24h Pass</span>
             </div>
