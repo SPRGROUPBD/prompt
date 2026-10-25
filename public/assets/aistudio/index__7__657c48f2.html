@@ -1,0 +1,2860 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1531" />
+  <meta name="description" content="Prompt Manager — browse, search and unlock premium AI prompts. Free and reward-unlock prompts for image, video, coding, and more." />
+  <title>Prompt Manager — Premium AI Prompts Library</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" />
+
+  <!-- Firebase v8 compat SDK (Auth removed — admin login is hardcoded) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+  <!--
+    ============================================================================
+      REWARD AD PROVIDER SDK
+      Insert the chosen provider's SDK <script> tag here when configured.
+      See REWARD_AD_CONFIG in <script> below for the active provider.
+
+      Default provider is "custom_video" which works WITHOUT any external SDK:
+        • YouTube Shorts/links → loaded via the YouTube IFrame API (loaded
+          on-demand from https://www.youtube.com/iframe_api — no script tag
+          needed here, the adapter injects it).
+        • Facebook Reels → embedded via Facebook's plugin iframe URL.
+        • Direct video URLs (.mp4/.webm) → HTML5 <video> element.
+
+      DO NOT USE Google AdSense — it does NOT support rewarded ad callbacks.
+    ============================================================================
+  -->
+
+  <style>
+    /* ===================================================================
+       CSS VARIABLES / THEME TOKENS  (shared by user + admin panels)
+       =================================================================== */
+    :root {
+      --bg-main: #f5f7fb;
+      --bg-card: #ffffff;
+      --bg-sidebar: #0f1531;
+      --bg-sidebar-soft: #1a2148;
+      --text-primary: #1a1f3a;
+      --text-secondary: #6b7290;
+      --text-muted: #a0a6c0;
+      --text-on-dark: #e8ecff;
+      --accent-blue: #4f6bff;
+      --accent-purple: #9b6bff;
+      --accent-pink: #ff6bb5;
+      --badge-free: #16a34a;
+      --badge-locked: #ea580c;
+      --badge-danger: #dc2626;
+      --gradient-primary: linear-gradient(135deg, #4f6bff 0%, #9b6bff 50%, #ff6bb5 100%);
+      --gradient-soft: linear-gradient(135deg, #eef1ff 0%, #f9eeff 100%);
+      --shadow-sm: 0 1px 3px rgba(15, 21, 49, .08);
+      --shadow-md: 0 4px 12px rgba(15, 21, 49, .10);
+      --shadow-lg: 0 12px 32px rgba(15, 21, 49, .15);
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 22px;
+      --radius-pill: 999px;
+      --transition: .25s cubic-bezier(.4, 0, .2, 1);
+    }
+    [data-theme="dark"] {
+      --bg-main: #0a0f24;
+      --bg-card: #131a3b;
+      --text-primary: #e8ecff;
+      --text-secondary: #a0a6c0;
+      --text-muted: #6b7290;
+      --gradient-soft: linear-gradient(135deg, #131a3b 0%, #1a2148 100%);
+    }
+
+    /* ============= Reset ============= */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      transition: background var(--transition), color var(--transition);
+    }
+    img { max-width: 100%; display: block; }
+    button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+    input, textarea, select { font: inherit; }
+    a { color: inherit; text-decoration: none; }
+    code { font-family: "JetBrains Mono", monospace; background: rgba(79,107,255,.1); padding: 2px 6px; border-radius: 4px; font-size: .85em; }
+
+    /* ============= Shared ============= */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: var(--radius-pill);
+      font-size: .72rem; font-weight: 700;
+    }
+    .badge-free { background: rgba(22, 163, 74, .14); color: var(--badge-free); }
+    .badge-locked { background: rgba(234, 88, 12, .14); color: var(--badge-locked); }
+    .badge-published { background: rgba(79, 107, 255, .14); color: var(--accent-blue); }
+    .badge-unpublished { background: rgba(160, 166, 192, .2); color: var(--text-muted); }
+    .badge-featured { background: rgba(155, 107, 255, .14); color: var(--accent-purple); }
+
+    .btn {
+      padding: 11px 18px; border-radius: var(--radius-sm);
+      font-weight: 600; font-size: .9rem;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all var(--transition);
+    }
+    .btn-primary { background: var(--gradient-primary); color: #fff; box-shadow: 0 4px 10px rgba(79,107,255,.3); }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(79,107,255,.4); }
+    .btn-ghost { background: var(--gradient-soft); color: var(--text-primary); }
+    .btn-ghost:hover { background: rgba(79,107,255,.1); }
+    .btn-danger { background: var(--badge-danger); color: #fff; }
+    .btn-sm { padding: 7px 12px; font-size: .82rem; }
+    .btn-block { width: 100%; }
+
+    .form-control {
+      width: 100%; padding: 11px 14px; border: 1px solid rgba(0,0,0,.1);
+      border-radius: var(--radius-sm); background: var(--bg-main);
+      color: var(--text-primary); outline: none; font-size: .9rem;
+    }
+    .form-control:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(79,107,255,.12); }
+    textarea.form-control { min-height: 80px; resize: vertical; font-family: "JetBrains Mono", monospace; font-size: .84rem; }
+
+    /* ============= Toast ============= */
+    .toast-container {
+      position: fixed; bottom: 80px; right: 24px; z-index: 300;
+      display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+    }
+    .toast {
+      background: var(--bg-card); padding: 12px 16px; border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg); min-width: 240px; max-width: 360px;
+      display: flex; align-items: center; gap: 10px; font-size: .9rem;
+      animation: toast-in .3s ease; border-left: 4px solid var(--accent-blue);
+      pointer-events: auto;
+    }
+    .toast.success { border-left-color: var(--badge-free); }
+    .toast.error { border-left-color: var(--badge-danger); }
+    @keyframes toast-in { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ============= Modal ============= */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(10, 15, 36, .65);
+      z-index: 100; display: none; place-items: center; padding: 18px;
+      backdrop-filter: blur(6px);
+    }
+    .modal-overlay.active { display: grid; }
+    .modal {
+      background: var(--bg-card); border-radius: var(--radius-lg);
+      max-width: 640px; width: 100%; max-height: 92dvh; overflow-y: auto;
+      box-shadow: var(--shadow-lg); animation: modal-in .25s ease;
+    }
+    .modal.modal-lg { max-width: 920px; }
+    /* Detail (View button) popup — narrower at 384px wide */
+    #detailOverlay .modal { max-width: 384px; }
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(20px) scale(.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-head {
+      padding: 16px 22px; border-bottom: 1px solid rgba(0,0,0,.06);
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; background: var(--bg-card); z-index: 1;
+    }
+    .modal-head h3 { font-size: 1.1rem; font-weight: 700; }
+    .modal-close {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--bg-main); display: grid; place-items: center;
+      font-size: 1.1rem;
+    }
+    .modal-close:hover { background: rgba(220, 38, 38, .15); }
+    .modal-body { padding: 22px; }
+    .modal-foot { padding: 14px 22px; border-top: 1px solid rgba(0,0,0,.06); display: flex; justify-content: flex-end; gap: 8px; }
+
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid currentColor; border-top-color: transparent;
+      border-radius: 50%; display: inline-block; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .skeleton {
+      background: linear-gradient(90deg, rgba(0,0,0,.05) 25%, rgba(0,0,0,.10) 37%, rgba(0,0,0,.05) 63%);
+      background-size: 400% 100%; animation: skel 1.4s ease infinite;
+    }
+    @keyframes skel { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+    /* ===================================================================
+       USER PANEL  (visible by default)
+       =================================================================== */
+    .app-header {
+      position: sticky; top: 0; z-index: 50;
+      background: var(--bg-card);
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      box-shadow: var(--shadow-sm);
+    }
+    .header-row {
+      display: flex; align-items: center; gap: 16px;
+      padding: 14px 22px; max-width: 1400px; margin: 0 auto;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.05rem; }
+    .brand-logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--gradient-primary);
+      display: grid; place-items: center; color: #fff; font-weight: 800;
+      box-shadow: 0 6px 14px rgba(79, 107, 255, .35);
+    }
+    .search-box {
+      flex: 1; display: flex; align-items: center; gap: 10px;
+      background: var(--bg-main); padding: 9px 16px;
+      border-radius: var(--radius-pill); border: 1px solid rgba(0,0,0,.06);
+      transition: border-color var(--transition);
+    }
+    .search-box:focus-within { border-color: var(--accent-blue); box-shadow: 0 0 0 4px rgba(79,107,255,.12); }
+    .search-box input { flex: 1; background: transparent; border: none; outline: none; color: var(--text-primary); font-size: .92rem; }
+    .search-box .ico, .search-box i { color: var(--text-secondary); font-size: 1rem; }
+
+    .theme-toggle {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: var(--gradient-soft); color: var(--text-primary);
+      transition: transform var(--transition);
+    }
+    .theme-toggle:hover { transform: rotate(20deg) scale(1.06); }
+
+    .layout { display: grid; grid-template-columns: 260px 1fr; max-width: 1400px; margin: 0 auto; min-height: calc(100vh - 70px); }
+
+    .sidebar {
+      background: var(--bg-sidebar); color: var(--text-on-dark);
+      padding: 22px 16px; position: sticky; top: 70px;
+      height: calc(100vh - 70px); overflow-y: auto;
+    }
+    .sidebar h4 { font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: rgba(232, 236, 255, .55); margin: 14px 14px 8px; }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 14px; border-radius: var(--radius-sm);
+      color: rgba(232, 236, 255, .82); font-size: .92rem;
+      margin: 2px 0; transition: background var(--transition), color var(--transition), transform var(--transition);
+    }
+    .sidebar-link .ico, .sidebar-link i { font-size: 1.05rem; opacity: .85; }
+    .sidebar-link:hover { background: rgba(255,255,255,.07); color: #fff; transform: translateX(2px); }
+    .sidebar-link.active { background: var(--gradient-primary); color: #fff; box-shadow: 0 6px 14px rgba(79,107,255,.35); }
+
+    .cat-pills { padding: 4px 6px; max-height: 320px; overflow-y: auto; }
+    .cat-pill {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; border-radius: var(--radius-sm);
+      color: rgba(232, 236, 255, .75); font-size: .88rem; cursor: pointer;
+      transition: background var(--transition);
+    }
+    .cat-pill i { font-size: 1rem; }
+    .cat-pill:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .cat-pill.active { background: var(--bg-sidebar-soft); color: #fff; }
+
+    .main { padding: 28px 28px 100px; }
+
+    .hero {
+      background: var(--gradient-primary);
+      border-radius: var(--radius-lg);
+      padding: 36px 34px; color: #fff;
+      margin-bottom: 28px; position: relative; overflow: hidden;
+    }
+    .hero::after {
+      content: ""; position: absolute; right: -60px; top: -60px;
+      width: 240px; height: 240px; background: rgba(255,255,255,.12);
+      border-radius: 50%; filter: blur(8px);
+    }
+    .hero h1 { font-size: clamp(1.3rem, 5vw, 1.8rem); font-weight: 800; letter-spacing: -.02em; margin-bottom: 8px; max-width: 580px; }
+    .hero p { opacity: .92; max-width: 540px; margin-bottom: 18px; font-size: clamp(.85rem, 3vw, .97rem); }
+    .hero-cta {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; color: var(--accent-blue);
+      padding: 11px 22px; border-radius: var(--radius-pill);
+      font-weight: 700; font-size: .92rem;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .hero-cta:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(0,0,0,.18); }
+
+    .section { margin-bottom: 36px; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .section-head h2 { font-size: clamp(1rem, 4vw, 1.15rem); font-weight: 700; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
+    .section-head h2::before { content: ""; width: 6px; height: 22px; border-radius: 3px; background: var(--gradient-primary); display: inline-block; }
+    .view-toggle { display: flex; gap: 6px; background: var(--bg-card); padding: 4px; border-radius: var(--radius-pill); border: 1px solid rgba(0,0,0,.06); }
+    .view-toggle button { padding: 6px 12px; border-radius: var(--radius-pill); font-size: .85rem; color: var(--text-secondary); transition: background var(--transition), color var(--transition); }
+    .view-toggle button.active { background: var(--accent-blue); color: #fff; }
+
+    .cat-chips { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 6px; scrollbar-width: thin; }
+    .cat-chip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 16px; border-radius: var(--radius-pill);
+      background: var(--bg-card); border: 1px solid rgba(0,0,0,.06);
+      font-size: .85rem; font-weight: 600; white-space: nowrap;
+      color: var(--text-secondary); cursor: pointer; transition: all var(--transition);
+    }
+    .cat-chip i { font-size: 1rem; }
+    .cat-chip:hover { color: var(--accent-blue); border-color: var(--accent-blue); transform: translateY(-1px); }
+    .cat-chip.active { background: var(--gradient-primary); color: #fff; border-color: transparent; box-shadow: 0 6px 14px rgba(79,107,255,.35); }
+
+    /* ===================================================================
+       PROMPT CARD  (clean 3-element structure: thumb | content | actions)
+       Uses theme variables. Grid view = vertical, List view = horizontal.
+       =================================================================== */
+    .prompt-card {
+      display: grid;
+      gap: 14px;
+      padding: 14px;
+      border: 1px solid rgba(0,0,0,.06);
+      border-radius: var(--radius-md);
+      background: var(--bg-card);
+      box-shadow: var(--shadow-sm);
+      box-sizing: border-box;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .prompt-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+
+    /* The thumbnail element (works for both <img> AND <video>) */
+    .thumb {
+      object-fit: cover;
+      border-radius: 8px;
+      display: block;
+      background: var(--gradient-soft);
+    }
+
+    /* Content column — holds tags, title, description, stats */
+    .prompt-content {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tags span {
+      background: rgba(79,107,255,.14);
+      color: var(--accent-blue);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: .72rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tags span.featured-tag {
+      background: rgba(155,107,255,.14);
+      color: var(--accent-purple);
+    }
+    .prompt-title {
+      font-size: 1rem;
+      line-height: 1.4;
+      font-weight: 700;
+      margin: 0;
+      color: var(--text-primary);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .prompt-desc {
+      font-size: .84rem;
+      color: var(--text-secondary);
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: .76rem;
+      color: var(--text-muted);
+    }
+    .stats span { display: inline-flex; align-items: center; gap: 4px; }
+
+    /* Actions column — Copy + View buttons */
+    .actions { display: flex; gap: 8px; }
+    .actions button {
+      padding: 9px 14px;
+      border: 0;
+      border-radius: 7px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: .85rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all var(--transition);
+    }
+    .actions .btn-copy {
+      background: var(--gradient-primary);
+      color: #fff;
+      box-shadow: 0 4px 10px rgba(79,107,255,.3);
+    }
+    .actions .btn-copy:hover { transform: translateY(-1px); box-shadow: 0 8px 16px rgba(79,107,255,.4); }
+    .actions .btn-view {
+      background: var(--gradient-soft);
+      color: var(--text-primary);
+    }
+    .actions .btn-view:hover { background: rgba(79,107,255,.1); }
+
+    /* ============= GRID VIEW (vertical card — default) ============= */
+    .prompts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+    .prompts-grid .prompt-card {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr auto;
+      padding: 12px;
+      gap: 12px;
+    }
+    /* aspect-ratio is more responsive than fixed height — thumb scales with card width */
+    .prompts-grid .thumb { width: 100%; aspect-ratio: 1.5; }
+    .prompts-grid .prompt-content { flex: 1; }
+    .prompts-grid .stats { margin-top: auto; }
+    .prompts-grid .actions { flex-direction: row; grid-template-columns: 1fr 1fr; }
+    .prompts-grid .actions button { flex: 1; }
+
+    /* ============= LIST VIEW (horizontal row — your design) ============= */
+    .prompts-grid.list-view { grid-template-columns: 1fr; gap: 12px; }
+    .prompts-grid.list-view .prompt-card {
+      grid-template-columns: 190px minmax(0, 1fr) auto;
+      grid-template-rows: auto;
+      align-items: center;
+      height: 190px;
+      padding: 14px;
+      overflow: hidden;
+    }
+    .prompts-grid.list-view .thumb {
+      width: 190px;
+      height: 190px;
+    }
+    .prompts-grid.list-view .prompt-content {
+      height: 190px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      align-items: center;
+      gap: 0;
+    }
+    .prompts-grid.list-view .prompt-desc { display: none; }   /* hide description in list view */
+    .prompts-grid.list-view .actions {
+      flex-direction: column;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      min-width: 90px;
+    }
+    .prompts-grid.list-view .actions button {
+      flex: 0 0 auto;
+      min-width: 90px;
+      padding: 10px 15px;
+      font-size: .9rem;
+    }
+
+    /* Mobile responsive for list view (≤650px) */
+    @media (max-width: 650px) {
+      .prompts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+      .prompts-grid .prompt-card { padding: 8px; gap: 8px; }
+      .prompts-grid .thumb { aspect-ratio: 1; }    /* square thumbs on mobile grid view */
+      .prompts-grid .prompt-title { font-size: 13px; }
+      .prompts-grid .tags span { font-size: 9px; padding: 3px 5px; }
+      .prompts-grid .stats { font-size: 10px; gap: 6px; }
+      .prompts-grid .actions button { font-size: 11px; padding: 8px 4px; }
+
+      .prompts-grid.list-view .prompt-card {
+        grid-template-columns: 90px minmax(0,1fr) auto;
+        gap: 8px;
+        padding: 9px;
+        height: 140px;
+      }
+      .prompts-grid.list-view .thumb { width: 90px; height: 90px; }
+      .prompts-grid.list-view .prompt-content { height: 90px; }
+      .prompts-grid.list-view .prompt-title { font-size: 12px; }
+      .prompts-grid.list-view .tags span { font-size: 9px; padding: 3px 5px; }
+      .prompts-grid.list-view .stats { font-size: 10px; gap: 6px; }
+      .prompts-grid.list-view .actions { min-width: 52px; gap: 6px; }
+      .prompts-grid.list-view .actions button { padding: 7px 5px; font-size: 10px; min-width: 50px; }
+    }
+    @media (max-width: 370px) {
+      .prompts-grid { grid-template-columns: 1fr; }
+    }
+
+    .stat-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+    .stat-card { background: var(--bg-card); padding: 16px 18px; border-radius: var(--radius-md); border: 1px solid rgba(0,0,0,.06); box-shadow: var(--shadow-sm); }
+    .stat-card .label { font-size: clamp(.7rem, 2.5vw, .78rem); color: var(--text-secondary); margin-bottom: 4px; }
+    .stat-card .value { font-size: clamp(1.1rem, 5vw, 1.4rem); font-weight: 800; letter-spacing: -.02em; }
+
+    .skeleton-card { height: 280px; border-radius: var(--radius-md); }
+    .skeleton-line { height: 12px; border-radius: 6px; margin-bottom: 8px; }
+
+    .detail-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .detail-thumb { width: 100%; height: 220px; border-radius: var(--radius-md); background: var(--gradient-soft); margin-bottom: 16px; overflow: hidden; display: grid; place-items: center; color: var(--accent-purple); font-size: 3rem; }
+    .detail-thumb img, .detail-thumb video { width: 100%; height: 100%; object-fit: cover; }
+    .detail-desc { color: var(--text-secondary); margin-bottom: 16px; font-size: .92rem; }
+    .detail-stats { display: flex; gap: 16px; padding: 12px 16px; background: var(--bg-main); border-radius: var(--radius-sm); margin-bottom: 16px; font-size: .85rem; color: var(--text-secondary); }
+    .detail-stats strong { color: var(--text-primary); font-weight: 700; margin-right: 4px; }
+    .prompt-text-box { background: var(--bg-main); padding: 15px 18px; border-radius: var(--radius-md); font-family: "JetBrains Mono", monospace; font-size: .86rem; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; max-height: 320px; overflow-y: auto; margin-bottom: 16px; border: 1px dashed rgba(79,107,255,.3); user-select: text; }
+    .prompt-text-locked { background: var(--bg-main); padding: 26px 18px; border-radius: var(--radius-md); text-align: center; color: var(--text-secondary); margin-bottom: 16px; border: 1px dashed rgba(234, 88, 12, .35); }
+    .prompt-text-locked .lock-ico { font-size: 2.4rem; margin-bottom: 8px; display: block; }
+    .related-prompts { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .related-prompt { background: var(--bg-main); padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: background var(--transition); font-size: .82rem; color: var(--text-secondary); }
+    .related-prompt:hover { background: rgba(79,107,255,.08); color: var(--accent-blue); }
+
+    .reward-modal { max-width: 420px; text-align: center; }
+    .reward-modal .reward-ico { font-size: 3.2rem; margin-bottom: 8px; display: inline-block; animation: shake 1.6s ease infinite; }
+    @keyframes shake { 0%, 100% { transform: rotate(0); } 20%, 60% { transform: rotate(-8deg); } 40%, 80% { transform: rotate(8deg); } }
+    .reward-modal h3 { font-size: 1.2rem; margin-bottom: 8px; }
+    .reward-modal p { color: var(--text-secondary); margin-bottom: 18px; font-size: .92rem; }
+    .reward-status { margin: 14px 0; padding: 12px; border-radius: var(--radius-sm); font-size: .85rem; }
+    .reward-status.loading { background: rgba(79,107,255,.1); color: var(--accent-blue); }
+    .reward-status.success { background: rgba(22, 163, 74, .1); color: var(--badge-free); }
+    .reward-status.error { background: rgba(234, 88, 12, .1); color: var(--badge-locked); }
+    .ad-container { width: 100%; min-height: 280px; background: var(--bg-main); border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--text-muted); margin: 10px 0 18px; position: relative; overflow: hidden; }
+    .ad-container iframe, .ad-container video { width: 100%; height: 100%; min-height: 280px; border: none; border-radius: var(--radius-sm); background: #000; }
+    .video-progress-wrap { margin: 6px 0 14px; }
+    .video-progress-bar { height: 8px; background: var(--bg-main); border-radius: var(--radius-pill); overflow: hidden; border: 1px solid rgba(0,0,0,.06); }
+    .video-progress-fill { height: 100%; background: var(--gradient-primary); width: 0%; transition: width .3s ease; }
+    .video-progress-label { font-size: .82rem; color: var(--text-secondary); margin-top: 6px; text-align: center; }
+    .video-progress-label strong { color: var(--accent-blue); }
+
+    .bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 60; background: var(--bg-card); border-top: 1px solid rgba(0,0,0,.06); padding: 8px 6px env(safe-area-inset-bottom); justify-content: space-around; }
+    .bottom-nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; font-size: .68rem; color: var(--text-muted); transition: color var(--transition); min-height: 48px; }
+    .bottom-nav button i { font-size: 1.25rem; }
+    .bottom-nav button.active { color: var(--accent-blue); }
+
+    /* ============= Hamburger + Mobile Drawer ============= */
+    .hamburger-btn {
+      display: none;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--gradient-soft); color: var(--text-primary);
+      align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      transition: transform var(--transition);
+      flex-shrink: 0;
+    }
+    .hamburger-btn:hover { transform: scale(1.06); }
+
+    .drawer-overlay {
+      position: fixed; inset: 0;
+      background: rgba(10, 15, 36, .65);
+      z-index: 105;
+      display: none;
+      backdrop-filter: blur(4px);
+      animation: fade-in .2s ease;
+    }
+    .drawer-overlay.active { display: block; }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+    .mobile-drawer {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 280px; max-width: 85vw;
+      background: var(--bg-sidebar); color: var(--text-on-dark);
+      z-index: 110;
+      transform: translateX(-100%);
+      transition: transform .28s cubic-bezier(.4, 0, .2, 1);
+      overflow-y: auto;
+      padding: 16px 14px;
+      display: flex; flex-direction: column;
+    }
+    .mobile-drawer.active { transform: translateX(0); }
+
+    .drawer-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 6px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      margin-bottom: 10px;
+    }
+    .drawer-head .brand-logo { width: 32px; height: 32px; font-size: .9rem; }
+    .drawer-head .brand-text { color: #fff; font-weight: 700; flex: 1; margin-left: 10px; font-size: 1rem; }
+    .drawer-close {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,.1); color: #fff;
+      display: grid; place-items: center; font-size: 1.1rem;
+      transition: background var(--transition);
+    }
+    .drawer-close:hover { background: rgba(255,255,255,.2); }
+
+    .drawer-h {
+      font-size: .72rem; text-transform: uppercase; letter-spacing: .12em;
+      color: rgba(232, 236, 255, .55);
+      margin: 12px 8px 6px;
+    }
+
+    .drawer-link {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 14px; border-radius: var(--radius-sm);
+      color: rgba(232, 236, 255, .82);
+      font-size: .92rem; cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+      margin: 2px 0;
+    }
+    .drawer-link i { font-size: 1.05rem; opacity: .85; min-width: 22px; }
+    .drawer-link:hover, .drawer-link.active {
+      background: var(--gradient-primary); color: #fff;
+      box-shadow: 0 4px 10px rgba(79,107,255,.3);
+    }
+
+    .drawer-cat-pill {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; border-radius: var(--radius-sm);
+      color: rgba(232, 236, 255, .75);
+      font-size: .88rem; cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+    }
+    .drawer-cat-pill i { font-size: 1rem; min-width: 22px; }
+    .drawer-cat-pill:hover, .drawer-cat-pill.active {
+      background: var(--bg-sidebar-soft); color: #fff;
+    }
+
+    .drawer-foot {
+      margin-top: auto; padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .drawer-foot .btn { flex: 1; min-width: 0; padding: 9px 10px; font-size: .82rem; }
+
+    .empty { text-align: center; padding: 60px 20px; color: var(--text-muted); grid-column: 1 / -1; }
+    .empty .ico { font-size: 3.5rem; margin-bottom: 10px; opacity: .6; }
+    .empty h3 { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 4px; }
+
+    /* ===================================================================
+       ADMIN LOGIN SCREEN
+       =================================================================== */
+    .login-screen { min-height: 100vh; display: none; place-items: center; background: linear-gradient(135deg, #0f1531 0%, #1a2148 50%, #2a1c5a 100%); padding: 24px; }
+    .login-screen.active { display: grid; }
+    .login-card { background: #fff; border-radius: var(--radius-lg); padding: 36px 32px; max-width: 420px; width: 100%; box-shadow: var(--shadow-lg); }
+    .login-card h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; background: var(--gradient-primary); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .login-card .sub { color: var(--text-secondary); margin-bottom: 22px; font-size: .92rem; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: .82rem; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); }
+
+    /* ===================================================================
+       ADMIN APP
+       =================================================================== */
+    .admin-app { display: none; }
+    .admin-app.active { display: block; }
+    .admin-body { display: grid; grid-template-columns: 240px 1fr; max-width: 1500px; margin: 0 auto; min-height: calc(100vh - 64px); }
+    .admin-sidebar { background: var(--bg-sidebar); color: var(--text-on-dark); padding: 18px 14px; position: sticky; top: 64px; height: calc(100vh - 64px); overflow-y: auto; }
+    .sidebar-h { font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: rgba(232, 236, 255, .5); margin: 14px 14px 8px; }
+    .admin-main { padding: 24px 26px 60px; }
+    .admin-section { display: none; }
+    .admin-section.active { display: block; }
+    .page-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+    .page-title h2 { font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
+    .page-title h2::before { content: ""; width: 6px; height: 24px; border-radius: 3px; background: var(--gradient-primary); display: inline-block; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 30px; }
+    .stat-card .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .stat-card .stat-ico { width: 36px; height: 36px; border-radius: 10px; background: var(--gradient-soft); color: var(--accent-blue); display: grid; place-items: center; font-size: 1.15rem; }
+    .stat-card .stat-label { font-size: .82rem; color: var(--text-secondary); margin-bottom: 4px; }
+    .stat-card .stat-value { font-size: 1.7rem; font-weight: 800; letter-spacing: -.02em; }
+
+    .table-wrap { background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid rgba(0,0,0,.06); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .table-toolbar { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(0,0,0,.06); flex-wrap: wrap; }
+    .table-toolbar .search-box { flex: 1; min-width: 220px; padding: 9px 14px; }
+    table.data { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    table.data th, table.data td { text-align: left; padding: 12px 14px; border-bottom: 1px solid rgba(0,0,0,.05); }
+    table.data th { font-weight: 700; font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); background: var(--bg-main); }
+    table.data tr:hover td { background: rgba(79,107,255,.04); }
+    .cell-title { font-weight: 600; }
+    .cell-meta { color: var(--text-secondary); font-size: .82rem; }
+    .row-thumb { width: 100px; height: 100px; border-radius: 8px; background: var(--gradient-soft); object-fit: cover; }
+    .row-actions { display: flex; gap: 6px; }
+    .btn-icon { width: 30px; height: 30px; border-radius: 6px; display: grid; place-items: center; background: var(--bg-main); transition: all var(--transition); }
+    .btn-icon:hover { background: var(--accent-blue); color: #fff; }
+    .btn-icon.danger:hover { background: var(--badge-danger); }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-hint { font-size: .76rem; color: var(--text-muted); margin-top: 4px; }
+    .checkbox-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg-main); border-radius: var(--radius-sm); }
+    .checkbox-row input { width: 18px; height: 18px; accent-color: var(--accent-blue); }
+    .checkbox-row label { font-size: .9rem; font-weight: 600; cursor: pointer; }
+
+    .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .cat-card { background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid rgba(0,0,0,.06); padding: 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow-sm); transition: transform var(--transition), box-shadow var(--transition); }
+    .cat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .cat-card .cat-head { display: flex; align-items: center; gap: 10px; }
+    .cat-card .cat-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--gradient-soft); color: var(--accent-purple); display: grid; place-items: center; font-size: 1.2rem; }
+    .cat-card .cat-name { font-weight: 700; flex: 1; }
+    .cat-card .cat-actions { display: flex; gap: 6px; }
+
+    /* ===================================================================
+       RESPONSIVE
+       =================================================================== */
+    /* ===================================================================
+       RESPONSIVE — desktop / tablet / mobile breakpoints
+       992px: sidebar → hamburger drawer, bottom nav appears
+       650px: grid → 2-col, list view shrinks
+       480px: ultra-narrow phones, tighter spacing
+       370px: single-column grid
+       =================================================================== */
+    @media (max-width: 992px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .bottom-nav { display: flex; }
+      .hamburger-btn { display: inline-flex; }
+      .main { padding: 18px 16px 100px; }
+      .header-row { padding: 12px 14px; gap: 8px; }
+      .brand span:not(.brand-logo) { display: none; }
+      .stat-strip { grid-template-columns: repeat(2, 1fr); }
+      .hero { padding: 22px 20px; }
+      .admin-body { grid-template-columns: 1fr; }
+      .admin-sidebar { display: none; }
+      .form-grid { grid-template-columns: 1fr; }
+      /* Hide brand text in admin header on mobile (keep avatar + hamburger) */
+      .admin-app .brand span:not(.brand-logo):not(.badge) { display: none; }
+      /* Hide the "View Site" button on mobile (still in drawer) */
+      .admin-app .header-row > .btn-ghost { display: none; }
+      /* Admin user chip: hide email text on tablet, keep avatar */
+      #userEmail { display: none; }
+      /* Modal body padding tighter on tablet */
+      .modal-body { padding: 18px; }
+    }
+    @media (max-width: 650px) {
+      /* Prompt grid: 2 columns, square thumbs, tighter spacing */
+      .prompts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 9px; }
+      .prompts-grid .prompt-card { padding: 8px; gap: 8px; }
+      .prompts-grid .thumb { aspect-ratio: 1; }
+      .prompts-grid .prompt-title { font-size: 13px; }
+      .prompts-grid .tags span { font-size: 9px; padding: 3px 5px; }
+      .prompts-grid .stats { font-size: 10px; gap: 6px; }
+      .prompts-grid .actions button { font-size: 11px; padding: 8px 4px; }
+
+      /* List view: 90×90 thumb, 140px card */
+      .prompts-grid.list-view .prompt-card {
+        grid-template-columns: 90px minmax(0,1fr) auto;
+        gap: 8px; padding: 9px; height: 140px;
+      }
+      .prompts-grid.list-view .thumb { width: 90px; height: 90px; }
+      .prompts-grid.list-view .prompt-content { height: 90px; }
+      .prompts-grid.list-view .prompt-title { font-size: 12px; }
+      .prompts-grid.list-view .tags span { font-size: 9px; padding: 3px 5px; }
+      .prompts-grid.list-view .stats { font-size: 10px; gap: 6px; }
+      .prompts-grid.list-view .actions { min-width: 52px; gap: 6px; }
+      .prompts-grid.list-view .actions button { padding: 7px 5px; font-size: 10px; min-width: 50px; }
+
+      /* Search bar: shorter placeholder on narrow screens */
+      .search-box { padding: 8px 12px; }
+      .search-box input { font-size: .85rem; }
+      .theme-toggle { width: 36px; height: 36px; }
+
+      /* Modal: tighter padding on mobile */
+      .modal-body { padding: 16px; }
+      .modal-head { padding: 14px 16px; }
+      .detail-thumb { height: 160px; }
+
+      /* Toast: full-width at bottom */
+      .toast-container { left: 12px; right: 12px; bottom: 90px; }
+      .toast { max-width: none; }
+
+      /* Admin table toolbar: stack dropdowns vertically */
+      .table-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+      .table-toolbar .search-box { min-width: 0; }
+      .table-toolbar .form-control { max-width: 100% !important; }
+
+      /* Admin header: hide user avatar circle on very narrow screens */
+      .admin-app #userEmail { display: none; }
+
+      /* Hero: tighter padding */
+      .hero { padding: 18px 16px; }
+      .hero-cta { padding: 9px 18px; font-size: .85rem; }
+
+      /* Login screen: smaller card */
+      .login-card { padding: 24px 20px; }
+    }
+    @media (max-width: 480px) {
+      /* Hide the admin link in header (accessible via hamburger drawer) */
+      .app-header .header-row > a[href="#admin"] { display: none; }
+      .search-box input { font-size: .82rem; }
+      .hamburger-btn { width: 36px; height: 36px; font-size: 1.2rem; }
+      .brand-logo { width: 32px; height: 32px; font-size: .85rem; }
+    }
+    @media (max-width: 370px) {
+      .prompts-grid { grid-template-columns: 1fr !important; }
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: rgba(79,107,255,.35); border-radius: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* Accessibility: visible focus outline for keyboard navigation */
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+      outline: 3px solid rgba(79,107,255,.5);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================================================================
+       USER PANEL (default visible)
+       ================================================================ -->
+  <div id="userPanel">
+    <header class="app-header">
+      <div class="header-row">
+        <button class="hamburger-btn" id="userHamburger" title="Menu"><i class="ri-menu-line"></i></button>
+        <a class="brand" href="#home">
+          <span class="brand-logo">P</span>
+          <span>Prompt Manager</span>
+        </a>
+        <div class="search-box">
+          <i class="ri-search-line ico"></i>
+          <input id="searchInput" type="text" placeholder="Search prompts, keywords, categories…" autocomplete="off" />
+          <button id="clearSearch" class="theme-toggle" style="display:none;width:30px;height:30px" title="Clear"><i class="ri-close-line"></i></button>
+        </div>
+        <button id="themeBtn" class="theme-toggle" title="Toggle theme">
+          <i class="ri-moon-line" id="themeIco"></i>
+        </button>
+        <a href="#admin" class="theme-toggle" title="Admin Panel" style="text-decoration:none">
+          <i class="ri-shield-user-line"></i>
+        </a>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <h4>Navigation</h4>
+        <a class="sidebar-link active" data-nav="home"><i class="ri-home-5-line ico"></i> Home</a>
+        <a class="sidebar-link" data-nav="latest"><i class="ri-flashlight-line ico"></i> Latest</a>
+        <a class="sidebar-link" data-nav="popular"><i class="ri-fire-line ico"></i> Popular</a>
+        <a class="sidebar-link" data-nav="featured"><i class="ri-star-line ico"></i> Featured</a>
+        <a class="sidebar-link" data-nav="free"><i class="ri-unlock-line ico"></i> Free Prompts</a>
+        <h4>Categories</h4>
+        <div id="catList" class="cat-pills"></div>
+      </aside>
+
+      <main class="main">
+        <section class="hero">
+          <h1>Unlock premium AI prompts — instantly.</h1>
+          <p>Hand-picked prompts for image, video, coding, and creative work. Watch a quick ad to unlock reward-locked prompts, or browse hundreds of free ones.</p>
+          <a class="hero-cta" href="#latest"><i class="ri-flashlight-line"></i> Browse Latest Prompts</a>
+        </section>
+
+        <section class="stat-strip">
+          <div class="stat-card"><div class="label">Total Prompts</div><div class="value" id="statTotal">—</div></div>
+          <div class="stat-card"><div class="label">Free</div><div class="value" id="statFree">—</div></div>
+          <div class="stat-card"><div class="label">Locked</div><div class="value" id="statLocked">—</div></div>
+          <div class="stat-card"><div class="label">Total Views</div><div class="value" id="statViews">—</div></div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Browse Categories</h2></div>
+          <div id="catChips" class="cat-chips"></div>
+        </section>
+
+        <section class="section" id="latest">
+          <div class="section-head">
+            <h2>Latest Prompts</h2>
+            <div class="view-toggle">
+              <button data-view="grid" class="active"><i class="ri-grid-line"></i> Grid</button>
+              <button data-view="list"><i class="ri-list-unordered"></i> List</button>
+            </div>
+          </div>
+          <div id="latestGrid" class="prompts-grid"></div>
+        </section>
+
+        <section class="section" id="featuredSection">
+          <div class="section-head"><h2>Featured Prompts</h2></div>
+          <div id="featuredGrid" class="prompts-grid"></div>
+        </section>
+
+        <section class="section" id="popularSection">
+          <div class="section-head"><h2>Popular Prompts</h2></div>
+          <div id="popularGrid" class="prompts-grid"></div>
+        </section>
+
+        <section class="section" id="searchSection" style="display:none">
+          <div class="section-head"><h2 id="searchTitle">Search Results</h2></div>
+          <div id="searchGrid" class="prompts-grid"></div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Prompt Detail Modal -->
+    <div class="modal-overlay" id="detailOverlay">
+      <div class="modal">
+        <div class="modal-head">
+          <h3 id="detailTitle">Prompt</h3>
+          <button class="modal-close" data-close><i class="ri-close-line"></i></button>
+        </div>
+        <div class="modal-body" id="detailBody"></div>
+      </div>
+    </div>
+
+    <!-- Mobile bottom nav -->
+    <nav class="bottom-nav">
+      <button data-nav="home" class="active"><i class="ri-home-5-line"></i> Home</button>
+      <button data-nav="latest"><i class="ri-flashlight-line"></i> Latest</button>
+      <button data-nav="featured"><i class="ri-star-line"></i> Featured</button>
+      <button data-nav="popular"><i class="ri-fire-line"></i> Popular</button>
+      <button data-nav="free"><i class="ri-unlock-line"></i> Free</button>
+    </nav>
+  </div>
+
+  <!-- ================================================================
+       ADMIN LOGIN SCREEN
+       ================================================================ -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <h1>Admin Login</h1>
+      <p class="sub">Secure access to Prompt Manager. Only authorized administrators can sign in.</p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="loginEmail" class="form-control" placeholder="admin@example.com" autocomplete="username" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <div id="loginError" style="color:var(--badge-danger);font-size:.85rem;margin-bottom:10px;display:none"></div>
+      <button id="loginBtn" class="btn btn-primary btn-block"><i class="ri-lock-unlock-line"></i> Sign In</button>
+      <p style="font-size:.78rem;color:var(--text-muted);margin-top:14px;text-align:center">
+        Admin login uses hardcoded credentials (no Firebase Auth). The default admin email is <code>mail.sajjadahmed@gmail.com</code>.
+      </p>
+      <a href="#home" style="display:block;text-align:center;margin-top:14px;color:var(--text-secondary);font-size:.85rem">← Back to site</a>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       ADMIN APP
+       ================================================================ -->
+  <div class="admin-app" id="adminApp">
+    <header class="app-header">
+      <div class="header-row">
+        <button class="hamburger-btn" id="adminHamburger" title="Menu"><i class="ri-menu-line"></i></button>
+        <a class="brand" href="#admin">
+          <span class="brand-logo">P</span>
+          <span>Prompt Manager</span>
+          <span class="badge badge-locked" style="margin-left:6px">ADMIN</span>
+        </a>
+        <div style="flex:1"></div>
+        <a href="#home" class="btn btn-ghost btn-sm" target="_blank" rel="noopener"><i class="ri-external-link-line"></i> View Site</a>
+        <button id="themeBtnAdmin" class="theme-toggle" title="Toggle theme"><i class="ri-moon-line" id="themeIcoAdmin"></i></button>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;background:var(--bg-main);border-radius:var(--radius-pill);font-size:.85rem">
+            <div id="userAvatar" style="width:28px;height:28px;border-radius:50%;background:var(--gradient-primary);color:#fff;display:grid;place-items:center;font-size:.8rem;font-weight:700">A</div>
+            <span id="userEmail">admin</span>
+          </div>
+          <button id="signOutBtn" class="btn-icon danger" title="Sign out"><i class="ri-logout-box-line"></i></button>
+        </div>
+      </div>
+    </header>
+
+    <div class="admin-body">
+      <aside class="admin-sidebar">
+        <div class="sidebar-h">Main</div>
+        <a class="sidebar-link active" data-section="dashboard"><i class="ri-dashboard-line"></i> Dashboard</a>
+        <a class="sidebar-link" data-section="prompts"><i class="ri-stack-line"></i> All Prompts</a>
+        <a class="sidebar-link" data-section="new-prompt"><i class="ri-add-circle-line"></i> Add Prompt</a>
+        <a class="sidebar-link" data-section="categories"><i class="ri-folders-line"></i> Categories</a>
+        <div class="sidebar-h">Filters</div>
+        <a class="sidebar-link" data-section="featured"><i class="ri-star-line"></i> Featured</a>
+        <a class="sidebar-link" data-section="free"><i class="ri-unlock-line"></i> Free Prompts</a>
+      </aside>
+
+      <main class="admin-main">
+        <!-- DASHBOARD -->
+        <section class="admin-section active" data-section="dashboard">
+          <div class="page-title"><h2>Dashboard</h2></div>
+          <div class="stats-grid" id="dashStats"></div>
+        </section>
+
+        <!-- ALL PROMPTS -->
+        <section class="admin-section" data-section="prompts">
+          <div class="page-title">
+            <h2>All Prompts</h2>
+            <button class="btn btn-primary" id="addPromptBtn"><i class="ri-add-line"></i> Add Prompt</button>
+          </div>
+          <div class="table-wrap">
+            <div class="table-toolbar">
+              <div class="search-box">
+                <i class="ri-search-line"></i>
+                <input id="promptSearch" type="text" placeholder="Search by title or ID…" />
+              </div>
+              <select class="form-control" id="filterCat" style="max-width:200px"><option value="">All Categories</option></select>
+              <select class="form-control" id="filterPublished" style="max-width:160px">
+                <option value="">All Status</option><option value="true">Published</option><option value="false">Unpublished</option>
+              </select>
+            </div>
+            <div style="overflow-x:auto">
+              <table class="data">
+                <thead><tr><th>Prompt</th><th>Category</th><th>Type</th><th>Stats</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="promptsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ADD/EDIT PROMPT -->
+        <section class="admin-section" data-section="new-prompt">
+          <div class="page-title"><h2 id="formTitle">Add New Prompt</h2></div>
+          <div class="table-wrap" style="padding:22px">
+            <form id="promptForm">
+              <input type="hidden" id="promptId" />
+              <div class="form-grid">
+                <div><label>Prompt Title *</label><input type="text" id="title" class="form-control" required maxlength="120" /></div>
+                <div><label>Category *</label><select id="categoryId" class="form-control" required></select></div>
+                <div class="full"><label>Short Description</label><textarea id="description" class="form-control" maxlength="400" placeholder="One-line summary shown on the card (optional)."></textarea><div class="form-hint">Max 400 characters. Optional — shown on prompt card.</div></div>
+                <div class="full"><label>Full Prompt Text *</label><textarea id="fullContent" class="form-control" required placeholder="Paste the full prompt text here. Line breaks are preserved when copying."></textarea><div class="form-hint">Saved as <code>fullContent</code> in <code>prompts_public</code>. For Reward-Locked prompts, the text is hidden in the user UI until the user watches the reward video (the lock is enforced client-side, not server-side).</div></div>
+                <div><label>Thumbnail (image / GIF / short video)</label><input type="file" id="thumbFile" accept="image/*,video/*" class="form-control" />
+                  <div id="thumbPreviewWrap" style="margin-top:8px;max-height:120px;border-radius:8px;overflow:hidden;display:none;background:var(--bg-main)">
+                    <img id="thumbPreview" style="max-height:120px;border-radius:8px;display:block" />
+                    <video id="thumbPreviewVideo" style="max-height:120px;width:100%;display:none" autoplay muted loop playsinline></video>
+                  </div>
+                  <div class="form-hint">Images auto-resize to 100×100. GIFs and videos are stored as-is (max 5 MB). Videos auto-play muted looped in the card.</div>
+                  <input type="hidden" id="thumbnail" />
+                </div>
+                <div><label>Prompt Type</label><select id="type" class="form-control"><option>Image</option><option>Video</option><option>Text</option><option selected>Coding</option><option>Other</option></select></div>
+                <input type="hidden" id="accessType" value="Free" />
+                <div><label>Display Order</label><input type="number" id="displayOrder" class="form-control" value="0" /><div class="form-hint">Auto-fills based on category (next number). You can override manually.</div></div>
+                <div class="full" style="display:flex;gap:12px;flex-wrap:wrap">
+                  <div class="checkbox-row"><input type="checkbox" id="featured" /><label for="featured">Featured</label></div>
+                  <div class="checkbox-row"><input type="checkbox" id="popular" /><label for="popular">Popular</label></div>
+                  <div class="checkbox-row"><input type="checkbox" id="published" checked /><label for="published">Published</label></div>
+                </div>
+              </div>
+              <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+                <button type="submit" class="btn btn-primary" id="saveBtn"><i class="ri-save-line"></i> SAVE</button>
+                <button type="submit" class="btn btn-primary" id="updateBtn" style="display:none"><i class="ri-edit-line"></i> UPDATE</button>
+                <button type="button" class="btn btn-danger" id="deleteBtn" style="display:none"><i class="ri-delete-bin-line"></i> DELETE</button>
+                <button type="reset" class="btn btn-ghost" id="cancelBtn"><i class="ri-close-line"></i> CANCEL</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- CATEGORIES -->
+        <section class="admin-section" data-section="categories">
+          <div class="page-title"><h2>Categories</h2><button class="btn btn-primary" id="addCatBtn"><i class="ri-add-line"></i> Add Category</button></div>
+          <div class="cat-grid" id="catGrid"></div>
+        </section>
+
+        <section class="admin-section" data-section="featured"><div class="page-title"><h2>Featured Prompts</h2></div><div class="table-wrap" style="padding:14px"><div id="featuredTableBody"></div></div></section>
+        <section class="admin-section" data-section="free"><div class="page-title"><h2>Free Prompts</h2></div><div class="table-wrap" style="padding:14px"><div id="freeTableBody"></div></div></section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Category Modal -->
+  <div class="modal-overlay" id="catModalOverlay">
+    <div class="modal">
+      <div class="modal-head"><h3 id="catModalTitle">Add Category</h3><button class="modal-close" data-close-cat><i class="ri-close-line"></i></button></div>
+      <div class="modal-body">
+        <form id="catForm">
+          <input type="hidden" id="catId" />
+          <div class="form-grid">
+            <div><label>Category Name *</label><input type="text" id="catName" class="form-control" required maxlength="80" /></div>
+            <div><label>Icon Class *</label><input type="text" id="catIcon" class="form-control" placeholder="ri-image-line" required /><div class="form-hint">Use a Remix Icon class from <a href="https://remixicon.com" target="_blank">remixicon.com</a>.</div></div>
+            <div><label>Display Order</label><input type="number" id="catOrder" class="form-control" value="0" /></div>
+            <div><label>Category Image (optional)</label><input type="text" id="catImage" class="form-control" placeholder="URL" /></div>
+            <div class="full checkbox-row"><input type="checkbox" id="catEnabled" checked /><label for="catEnabled">Enabled (visible to users)</label></div>
+          </div>
+          <div style="margin-top:18px;display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" class="btn btn-danger" id="catDeleteBtn" style="display:none">Delete</button>
+            <button type="button" class="btn btn-ghost" data-close-cat>Cancel</button>
+            <button type="submit" class="btn btn-primary"><i class="ri-save-line"></i> Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div class="modal-overlay" id="confirmOverlay">
+    <div class="modal" style="max-width:380px">
+      <div class="modal-body" style="text-align:center;padding:26px 22px">
+        <div style="font-size:2.6rem;margin-bottom:10px" id="confirmIcon">⚠️</div>
+        <h3 id="confirmTitle" style="font-size:1.1rem;margin-bottom:8px">Confirm Action</h3>
+        <p id="confirmMsg" style="color:var(--text-secondary);font-size:.9rem;margin-bottom:18px"></p>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button class="btn btn-ghost" id="confirmCancel">Cancel</button>
+          <button class="btn btn-danger" id="confirmOk">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ============= USER MOBILE DRAWER (slide-in from left) ============= -->
+  <div class="drawer-overlay" id="userDrawerOverlay"></div>
+  <aside class="mobile-drawer" id="userDrawer">
+    <div class="drawer-head">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="brand-logo">P</div>
+        <div class="brand-text">Prompt Manager</div>
+      </div>
+      <button class="drawer-close" id="userDrawerClose"><i class="ri-close-line"></i></button>
+    </div>
+
+    <div class="drawer-h">Navigation</div>
+    <a class="drawer-link active" data-nav="home"><i class="ri-home-5-line"></i> Home</a>
+    <a class="drawer-link" data-nav="latest"><i class="ri-flashlight-line"></i> Latest</a>
+    <a class="drawer-link" data-nav="popular"><i class="ri-fire-line"></i> Popular</a>
+    <a class="drawer-link" data-nav="featured"><i class="ri-star-line"></i> Featured</a>
+    <a class="drawer-link" data-nav="free"><i class="ri-unlock-line"></i> Free Prompts</a>
+
+    <div class="drawer-h">Categories</div>
+    <div id="userDrawerCats" style="overflow-y:auto;max-height:40vh"></div>
+
+    <div class="drawer-foot">
+      <button class="btn btn-ghost" id="userDrawerTheme" style="background:rgba(255,255,255,.1);color:#fff">
+        <i class="ri-moon-line"></i> Theme
+      </button>
+      <a href="#admin" class="btn btn-primary" style="text-decoration:none">
+        <i class="ri-shield-user-line"></i> Admin
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============= ADMIN MOBILE DRAWER (slide-in from left) ============= -->
+  <div class="drawer-overlay" id="adminDrawerOverlay"></div>
+  <aside class="mobile-drawer" id="adminDrawer">
+    <div class="drawer-head">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="brand-logo">P</div>
+        <div class="brand-text">Admin Panel</div>
+      </div>
+      <button class="drawer-close" id="adminDrawerClose"><i class="ri-close-line"></i></button>
+    </div>
+
+    <div class="drawer-h">Main</div>
+    <a class="drawer-link active" data-section="dashboard"><i class="ri-dashboard-line"></i> Dashboard</a>
+    <a class="drawer-link" data-section="prompts"><i class="ri-stack-line"></i> All Prompts</a>
+    <a class="drawer-link" data-section="new-prompt"><i class="ri-add-circle-line"></i> Add Prompt</a>
+    <a class="drawer-link" data-section="categories"><i class="ri-folders-line"></i> Categories</a>
+
+    <div class="drawer-h">Filters</div>
+    <a class="drawer-link" data-section="featured"><i class="ri-star-line"></i> Featured</a>
+    <a class="drawer-link" data-section="free"><i class="ri-unlock-line"></i> Free Prompts</a>
+
+    <div class="drawer-foot">
+      <a href="#home" class="btn btn-ghost" style="background:rgba(255,255,255,.1);color:#fff;text-decoration:none" target="_blank" rel="noopener">
+        <i class="ri-external-link-line"></i> View Site
+      </a>
+      <button class="btn btn-danger" id="adminDrawerSignOut">
+        <i class="ri-logout-box-line"></i> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!--
+    Placeholders filled by subsequent Edit calls:
+      - inline <script> with Firebase config + all app logic + sample data
+  -->
+  <script>
+  /* ==================================================================
+     SECTION 1 OF 4 — FIREBASE CONFIG + UTILITIES
+     ================================================================== */
+
+  // ---- Firebase project config (REAL VALUES PROVIDED) ----
+  const firebaseConfig = {
+    apiKey: "AIzaSyBoIxaoto4Gd48pPThk1KTERvoejI8HzNA",
+    authDomain: "chat-881cc.firebaseapp.com",
+    databaseURL: "https://chat-881cc-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "chat-881cc",
+    storageBucket: "chat-881cc.firebasestorage.app",
+    messagingSenderId: "1095415944252",
+    appId: "1:1095415944252:web:8458c81f41da642edcdf39",
+    measurementId: "G-VS7VCXT090"
+  };
+
+  // ---- Reward Ad config (PUBLIC values only — secrets live in Cloud Functions env) ----
+  // provider="custom_video" lets the admin paste ANY video URL (YouTube Shorts,
+  // Facebook Reels, or direct .mp4) and require users to actually watch it for
+  // `customVideoDurationSec` seconds before the unlock fires.
+  const REWARD_AD_CONFIG = {
+    provider: "custom_video",          // monetag | adsterra | applovin | unity | custom_video
+    placementId: "YOUR_REWARD_AD_PLACEMENT_ID",
+    enabled: true,
+    unlockDurationMs: 1000 * 60 * 60 * 24, // 24h
+    dailyUnlockLimit: 20,
+    // ---- Custom video reward settings (only used when provider = "custom_video") ----
+    customVideoUrl: "",                // e.g. https://www.youtube.com/shorts/abc123
+                                       //      https://www.facebook.com/reel/12345
+                                       //      https://example.com/video.mp4
+    customVideoType: "youtube",        // youtube | facebook | direct
+    customVideoDurationSec: 30,        // seconds the user must actually watch
+    customVideoTitle: "Sponsored Video"
+  };
+
+  // ---- Initialise Firebase (Auth removed — admin login is hardcoded) ----
+  let db = null, storage = null;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    storage = firebase.storage();
+  } catch (e) { console.error("Firebase init error:", e); }
+
+  // ---- Hardcoded admin credentials ----
+  // To change these, edit the two values below. The login form just
+  // checks against these. NO Firebase Auth involved.
+  //
+  // ⚠️ WARNING: these are visible to anyone who opens the page source.
+  // Anyone can read them and log into the admin panel. The database
+  // rules are wide-open (.write: true) so they can also trash the
+  // database directly via the Firebase REST API. For a real product,
+  // re-enable Firebase Auth + the admin-UID check.
+  const ADMIN_EMAIL = "mail.sajjadahmed@gmail.com";
+  const ADMIN_PASSWORD = "user@900";
+
+  // ---- Tiny helpers ----
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+  }
+  function generateId(prefix = "p") {
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  function getDeviceToken() {
+    let t = localStorage.getItem("pm_device_token");
+    if (!t) {
+      t = "dev_" + Date.now().toString(36) + Math.random().toString(36).slice(2,12) + Math.random().toString(36).slice(2,12);
+      localStorage.setItem("pm_device_token", t);
+    }
+    return t;
+  }
+  async function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.top = "-9999px";
+      ta.setAttribute("readonly", "");
+      document.body.appendChild(ta); ta.select(); document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+  }
+  function showToast(message, type = "info", duration = 2800) {
+    const container = $("#toastContainer") || document.body;
+    const toast = document.createElement("div");
+    toast.className = `toast ${type}`;
+    const icons = { success: "✓", error: "✕", info: "ℹ" };
+    toast.innerHTML = `<span>${icons[type] || "ℹ"}</span><span>${escapeHtml(message)}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = "0"; toast.style.transform = "translateX(120%)";
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+  function initTheme() {
+    const saved = localStorage.getItem("pm_theme") || "light";
+    document.documentElement.setAttribute("data-theme", saved);
+  }
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute("data-theme") || "light";
+    const next = cur === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("pm_theme", next);
+    return next;
+  }
+  function formatNum(n) {
+    n = Number(n || 0);
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+    if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+    return n.toString();
+  }
+  function formatDate(ts) {
+    if (!ts) return "—";
+    return new Date(ts).toLocaleDateString(undefined, { year:"numeric", month:"short", day:"numeric" });
+  }
+  function debounce(fn, ms = 250) {
+    let t; return function (...a) { clearTimeout(t); t = setTimeout(() => fn.apply(this, a), ms); };
+  }
+  function placeholderThumb(seedText) {
+    const text = (seedText || "P").slice(0, 1).toUpperCase();
+    const colors = ["#4f6bff", "#9b6bff", "#ff6bb5", "#16a34a", "#ea580c"];
+    const c = colors[(text.charCodeAt(0) || 0) % colors.length];
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".18"/><stop offset="1" stop-color="${c}" stop-opacity=".04"/></linearGradient></defs><rect width="320" height="200" fill="url(#g)"/><text x="50%" y="50%" text-anchor="middle" dy=".35em" font-family="Inter, sans-serif" font-size="64" font-weight="800" fill="${c}">${escapeHtml(text)}</text></svg>`;
+    return "data:image/svg+xml;base64," + btoa(svg);
+  }
+  async function incrementStat(promptId, field) {
+    // Increment the counter directly in Firebase via the SDK.
+    // Uses transaction() for atomic increment (handles concurrent writes
+    // correctly — no race conditions). The database rules are public
+    // (".write": true) so this works without Cloud Functions.
+    if (!db || !promptId || !field) return;
+    try {
+      // Increment the per-prompt counter
+      const ref = db.ref(`PROMPT_MANAGER/prompts_public/${promptId}/${field}`);
+      await ref.transaction(cur => (typeof cur === "number" ? cur + 1 : 1));
+      // Also increment the aggregate counter (e.g. totalViews / totalCopies)
+      const aggKey = "total" + field.charAt(0).toUpperCase() + field.slice(1);
+      const aggRef = db.ref(`PROMPT_MANAGER/statistics/${aggKey}`);
+      await aggRef.transaction(cur => (typeof cur === "number" ? cur + 1 : 1)).catch(() => {});
+    } catch (e) {
+      console.debug("[stat] failed to increment:", field, e);
+    }
+  }
+
+  /* ==================================================================
+     SECTION 2 OF 4 — REWARD AD PROVIDER ADAPTER
+     ================================================================== */
+
+  window.RewardAdProvider = (function () {
+    const adapters = {
+      monetag: {
+        ensureLoaded() {
+          if (window.__monetagSDK) return Promise.resolve();
+          return new Promise((resolve, reject) => {
+            const s = document.createElement("script");
+            s.src = "https://libtl.com/sdk.js";
+            s.async = true;
+            s.onload = () => {
+              if (window.smiObj && window.smiObj.showRewarded) {
+                window.__monetagSDK = true; resolve();
+              } else reject(new Error("Monetag rewarded API not available."));
+            };
+            s.onerror = () => reject(new Error("Monetag SDK failed to load."));
+            document.head.appendChild(s);
+          });
+        },
+        async showAd({ placementId, onReward, onError, onClose }) {
+          await this.ensureLoaded();
+          window.smiObj.showRewarded({ placementId, onReward, onClose, onError });
+        }
+      },
+      adsterra: {
+        ensureLoaded() { return Promise.resolve(); },
+        async showAd({ placementId, onReward, onError, onClose }) {
+          if (window.adsterra_reward_bridge && typeof window.adsterra_reward_bridge.show === "function") {
+            window.adsterra_reward_bridge.show({ placementId, onReward, onError, onClose });
+          } else throw new Error("Adsterra reward bridge not configured.");
+        }
+      },
+      applovin: {
+        ensureLoaded() { return Promise.reject(new Error("AppLovin SDK not yet configured.")); },
+        async showAd({ placementId, onReward, onError, onClose }) {
+          if (window.AppLovin && window.AppLovin.showRewarded) {
+            window.AppLovin.showRewarded({ placementId, onReward, onError, onClose });
+          } else throw new Error("AppLovin SDK not loaded.");
+        }
+      },
+      unity: {
+        ensureLoaded() { return Promise.reject(new Error("Unity Ads SDK not yet configured.")); },
+        async showAd({ placementId, onReward, onError, onClose }) {
+          if (window.UnityAds && window.UnityAds.showRewarded) {
+            window.UnityAds.showRewarded({ placementId, onReward, onError, onClose });
+          } else throw new Error("Unity Ads SDK not loaded.");
+        }
+      },
+      custom: {
+        ensureLoaded() { return Promise.resolve(); },
+        async showAd({ placementId, onReward, onError, onClose }) {
+          if (window.CustomRewardAd && typeof window.CustomRewardAd.show === "function") {
+            window.CustomRewardAd.show({ placementId, onReward, onError, onClose });
+          } else throw new Error("Custom reward ad not implemented.");
+        }
+      },
+
+      // ===========================================================
+      // CUSTOM VIDEO adapter
+      // Lets the admin paste ANY video URL:
+      //   • YouTube Shorts / watch / youtu.be links
+      //   • Facebook Reels / watch URLs
+      //   • Direct video URLs (.mp4 / .webm)
+      // For YouTube and direct video we track ACTUAL playback progress
+      // via the official YouTube IFrame API and the HTML5 <video>
+      // `timeupdate` event respectively. For Facebook iframe embeds
+      // (which don't expose playback state cross-origin) we use a
+      // "must keep modal open & video visible" timer — this is a
+      // minimum viewing time, not a fake countdown.
+      // ===========================================================
+      custom_video: {
+        name: "custom_video",
+
+        // ---- Load YouTube IFrame API on demand ----
+        ensureYouTubeAPI() {
+          return new Promise(resolve => {
+            if (window.YT && window.YT.Player) return resolve();
+            // Queue the callback
+            const prev = window.onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady = function () {
+              if (typeof prev === "function") try { prev(); } catch (e) {}
+              resolve();
+            };
+            if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+              const s = document.createElement("script");
+              s.src = "https://www.youtube.com/iframe_api";
+              s.async = true;
+              document.head.appendChild(s);
+            }
+          });
+        },
+
+        // ---- Extract the YouTube video ID from any common URL form ----
+        extractYouTubeId(url) {
+          if (!url) return null;
+          const m = url.match(/(?:youtube\.com\/(?:shorts\/|watch\?v=|embed\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+          return m ? m[1] : null;
+        },
+
+        // ---- Detect type from URL ----
+        detectType(url) {
+          if (!url) return "direct";
+          if (/youtube\.com|youtu\.be/.test(url)) return "youtube";
+          if (/facebook\.com|fb\.watch/.test(url)) return "facebook";
+          if (/\.(mp4|webm|ogg|m3u8)(\?|$)/i.test(url)) return "direct";
+          return "direct";
+        },
+
+        // ---- Build a Facebook plugin embed URL from any FB video URL ----
+        buildFacebookEmbed(url) {
+          // Try the Facebook plugin video.php endpoint
+          return "https://www.facebook.com/plugins/video.php?href=" + encodeURIComponent(url) +
+                 "&show_text=false&width=560&autoplay=true";
+        },
+
+        async showAd({ onReward, onError, onClose }) {
+          const cfg = REWARD_AD_CONFIG || {};
+          let url = (cfg.customVideoUrl || "").trim();
+          let type = cfg.customVideoType || this.detectType(url);
+          let duration = Number(cfg.customVideoDurationSec) || 30;
+
+          if (!url) {
+            onError(new Error("No video URL configured. Set one in Admin → Ad Settings."));
+            return;
+          }
+
+          // Auto-detect type if it's set to "auto" or empty
+          if (!type || type === "auto") type = this.detectType(url);
+
+          const adContainer = document.getElementById("adContainer");
+          const progressWrap = document.getElementById("videoProgressWrap");
+          const progressFill = document.getElementById("videoProgressFill");
+          const progressLabel = document.getElementById("videoProgressLabel");
+          const progressTarget = document.getElementById("videoProgressTarget");
+
+          if (!adContainer) {
+            onError(new Error("Ad container not found in DOM."));
+            return;
+          }
+
+          adContainer.innerHTML = "";
+          adContainer.style.display = "grid";
+
+          if (progressWrap) {
+            progressWrap.style.display = "block";
+            progressTarget.textContent = duration + "s";
+            progressFill.style.width = "0%";
+            progressLabel.innerHTML = `Watch the video to unlock… <strong>0s</strong> / <span id="videoProgressTarget">${duration}s</span>`;
+          }
+
+          let rewarded = false;
+          const fireReward = () => {
+            if (rewarded) return;
+            rewarded = true;
+            cleanup();
+            onReward();
+          };
+          const fireError = (msg) => {
+            cleanup();
+            onError(new Error(msg));
+          };
+
+          // ---- Cleanup any timers/listeners ----
+          let ytPlayer = null, ytInterval = null, directVideo = null, fbInterval = null;
+          function cleanup() {
+            try { if (ytInterval) clearInterval(ytInterval); } catch (e) {}
+            try { if (fbInterval) clearInterval(fbInterval); } catch (e) {}
+            try { if (ytPlayer && ytPlayer.destroy) ytPlayer.destroy(); } catch (e) {}
+            try { if (directVideo && directVideo.pause) directVideo.pause(); } catch (e) {}
+          }
+
+          // ---- Progress updater ----
+          function updateProgress(secondsWatched) {
+            const pct = Math.min(100, (secondsWatched / duration) * 100);
+            if (progressFill) progressFill.style.width = pct + "%";
+            const watched = Math.min(duration, Math.floor(secondsWatched));
+            const strong = progressLabel ? progressLabel.querySelector("strong") : null;
+            if (strong) strong.textContent = watched + "s";
+            if (secondsWatched >= duration) fireReward();
+          }
+
+          // ===== YOUTUBE =====
+          if (type === "youtube") {
+            const videoId = this.extractYouTubeId(url);
+            if (!videoId) { fireError("Invalid YouTube URL — couldn't extract video ID."); return; }
+
+            const host = document.createElement("div");
+            host.id = "ytRewardPlayer";
+            host.style.width = "100%";
+            host.style.height = "100%";
+            host.style.minHeight = "300px";
+            adContainer.appendChild(host);
+
+            try {
+              await this.ensureYouTubeAPI();
+            } catch (e) { fireError("YouTube IFrame API failed to load."); return; }
+
+            let lastTime = 0;
+            let watchedSeconds = 0;
+            ytPlayer = new YT.Player("ytRewardPlayer", {
+              videoId,
+              // Mute by default so autoplay works across all browsers
+              // (browsers block unmuted autoplay without explicit user
+              // gesture; the user can click unmute if they want sound).
+              playerVars: { autoplay: 1, controls: 1, rel: 0, modestbranding: 1, mute: 1, playsinline: 1 },
+              events: {
+                onReady: (e) => {
+                  try { e.target.mute(); e.target.playVideo(); } catch (err) {}
+                  // Add an unmute button overlay so the user can opt-in to sound
+                  try {
+                    const unmute = document.createElement("button");
+                    unmute.innerHTML = `<i class="ri-volume-mute-line"></i> Tap for sound`;
+                    unmute.style.cssText = "position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;z-index:10";
+                    unmute.onclick = () => {
+                      try { e.target.unMute(); unmute.remove(); } catch (err) {}
+                    };
+                    adContainer.appendChild(unmute);
+                  } catch (err) {}
+                },
+                onStateChange: (e) => {
+                  if (e.data === YT.PlayerState.PLAYING) {
+                    if (ytInterval) clearInterval(ytInterval);
+                    ytInterval = setInterval(() => {
+                      try {
+                        const cur = ytPlayer.getCurrentTime() || 0;
+                        if (cur > lastTime) watchedSeconds += (cur - lastTime);
+                        lastTime = cur;
+                        updateProgress(watchedSeconds);
+                      } catch (err) {}
+                    }, 500);
+                  } else if (e.data === YT.PlayerState.ENDED) {
+                    // Video ended → reward
+                    updateProgress(duration);
+                  } else {
+                    // Paused/buffering → pause tracking
+                    if (ytInterval) { clearInterval(ytInterval); ytInterval = null; }
+                  }
+                },
+                onError: () => fireError("YouTube video failed to load.")
+              }
+            });
+            return;
+          }
+
+          // ===== FACEBOOK =====
+          if (type === "facebook") {
+            const embedUrl = this.buildFacebookEmbed(url);
+            const iframe = document.createElement("iframe");
+            iframe.src = embedUrl;
+            iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+            iframe.allowFullscreen = true;
+            iframe.style.width = "100%";
+            iframe.style.height = "100%";
+            iframe.style.minHeight = "300px";
+            iframe.style.border = "none";
+            adContainer.appendChild(iframe);
+
+            // Facebook plugin iframes don't expose playback state cross-origin,
+            // so we require the user to keep the modal open (and the iframe
+            // visible) for `duration` seconds. The video autoplays.
+            let elapsed = 0;
+            if (progressLabel) progressLabel.innerHTML = `Keep watching the video… <strong>0s</strong> / <span id="videoProgressTarget">${duration}s</span>`;
+            fbInterval = setInterval(() => {
+              // Only count if the modal & container are still visible
+              const modal = document.getElementById("rewardOverlay");
+              if (!modal || !modal.classList.contains("active")) return;
+              const rect = adContainer.getBoundingClientRect();
+              if (rect.width === 0 || rect.height === 0) return;
+              elapsed += 1;
+              updateProgress(elapsed);
+            }, 1000);
+            return;
+          }
+
+          // ===== DIRECT VIDEO (.mp4 / .webm / .ogg) =====
+          if (type === "direct") {
+            directVideo = document.createElement("video");
+            directVideo.src = url;
+            directVideo.controls = true;
+            directVideo.autoplay = true;
+            directVideo.muted = true;     // muted autoplay is more reliable
+            directVideo.playsInline = true;
+            directVideo.style.width = "100%";
+            directVideo.style.maxHeight = "400px";
+            directVideo.style.background = "#000";
+            adContainer.appendChild(directVideo);
+
+            let lastTime = 0;
+            let watchedSeconds = 0;
+            directVideo.addEventListener("timeupdate", () => {
+              const cur = directVideo.currentTime || 0;
+              if (cur > lastTime) watchedSeconds += (cur - lastTime);
+              lastTime = cur;
+              updateProgress(watchedSeconds);
+            });
+            directVideo.addEventListener("ended", () => updateProgress(duration));
+            directVideo.addEventListener("error", () => fireError("Video failed to load."));
+            // Try to autoplay (muted — should work in all browsers)
+            const p = directVideo.play();
+            if (p && p.catch) p.catch(() => {
+              if (progressLabel) progressLabel.innerHTML = `Tap play to start. Watch for <strong>${duration}s</strong> to unlock.`;
+              $("#watchAdBtn").style.display = "";
+              $("#watchAdBtn").innerHTML = `<i class="ri-play-circle-line"></i> Play Video`;
+            });
+            return;
+          }
+
+          fireError("Unknown custom video type: " + type);
+        }
+      }
+    };
+    return {
+      isAvailable() { return !!(REWARD_AD_CONFIG.provider && adapters[REWARD_AD_CONFIG.provider]); },
+      async showAd(opts) {
+        const p = REWARD_AD_CONFIG.provider;
+        const a = adapters[p];
+        if (!a) throw new Error(`Unknown reward ad provider: ${p}`);
+        await a.showAd({
+          placementId: opts.placementId || REWARD_AD_CONFIG.placementId,
+          onReward: opts.onReward, onClose: opts.onClose, onError: opts.onError
+        });
+      }
+    };
+  })();
+
+  console.log("[init] Prompt Manager single-file build ready. Firebase project: chat-881cc");
+  </script>
+
+  <script>
+  /* ==================================================================
+     SECTION 3 OF 4 — USER PANEL LOGIC
+     ================================================================== */
+
+  const State = {
+    categories: [],
+    prompts: [],
+    settings: null,
+    // View preference persisted to localStorage (so reload keeps grid/list choice)
+    view: localStorage.getItem("pm_view") === "list" ? "list" : "grid",
+    activeCategory: null,
+    activeNav: "home",
+    searchQuery: "",
+    unlockedPrompts: new Set(),
+  };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    initTheme();
+    routeFromHash();
+    window.addEventListener("hashchange", routeFromHash);
+    bindUserEvents();
+    bindAdminEvents();
+    restoreSessionUnlocks();
+    bootUserPanel();
+  });
+
+  function routeFromHash() {
+    const h = (location.hash || "#home").slice(1);
+    if (h === "admin") showAdminLogin();
+    else showUserPanel();
+  }
+
+  function showUserPanel() {
+    $("#userPanel").style.display = "";
+    $("#loginScreen").classList.remove("active");
+    $("#adminApp").classList.remove("active");
+    document.body.style.overflow = "";
+  }
+  function showAdminLogin() {
+    $("#userPanel").style.display = "none";
+    $("#loginScreen").classList.add("active");
+    $("#adminApp").classList.remove("active");
+    // Auth listener handles the rest
+  }
+  function showAdminApp() {
+    $("#userPanel").style.display = "none";
+    $("#loginScreen").classList.remove("active");
+    $("#adminApp").classList.add("active");
+    goSection("dashboard");
+    // Start admin-side realtime listeners (was previously inside the
+    // Firebase Auth listener — now triggered on successful admin login).
+    if (db) {
+      loadAdminCategoriesRT();
+    }
+  }
+
+  // ---- Theme ----
+  function setThemeIcon(icoId) {
+    const t = localStorage.getItem("pm_theme") || "light";
+    const el = $(icoId);
+    if (el) el.className = t === "dark" ? "ri-sun-line" : "ri-moon-line";
+  }
+
+  // ---- Bind user panel events ----
+  function bindUserEvents() {
+    $("#themeBtn")?.addEventListener("click", () => { toggleTheme(); setThemeIcon("#themeIco"); });
+    setThemeIcon("#themeIco");
+
+    // Wire up sidebar links AND drawer links (both use data-nav)
+    $$("[data-nav]").forEach(btn => btn.addEventListener("click", () => {
+      setNav(btn.dataset.nav);
+      closeUserDrawer();
+    }));
+    $$(".view-toggle button").forEach(btn => btn.addEventListener("click", () => setView(btn.dataset.view)));
+    // Reflect the saved view preference in the toggle buttons on page load
+    $$(".view-toggle button").forEach(b => b.classList.toggle("active", b.dataset.view === State.view));
+
+    const searchInput = $("#searchInput");
+    if (searchInput) {
+      searchInput.addEventListener("input", debounce(() => handleSearch(searchInput.value), 280));
+      $("#clearSearch").addEventListener("click", () => { searchInput.value = ""; handleSearch(""); });
+    }
+
+    $("[data-close]")?.addEventListener("click", closeDetailModal);
+    $("#detailOverlay")?.addEventListener("click", e => { if (e.target.id === "detailOverlay") closeDetailModal(); });
+
+    // ---- Mobile drawer wiring (user panel) ----
+    $("#userHamburger")?.addEventListener("click", openUserDrawer);
+    $("#userDrawerClose")?.addEventListener("click", closeUserDrawer);
+    $("#userDrawerOverlay")?.addEventListener("click", closeUserDrawer);
+    $("#userDrawerTheme")?.addEventListener("click", () => {
+      toggleTheme(); setThemeIcon("#themeIco");
+    });
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") { closeDetailModal(); closeConfirm(); closeUserDrawer(); closeAdminDrawer(); }
+    });
+  }
+
+  // ---- User panel mobile drawer ----
+  function openUserDrawer() {
+    renderUserDrawerCategories();
+    $("#userDrawer")?.classList.add("active");
+    $("#userDrawerOverlay")?.classList.add("active");
+    document.body.style.overflow = "hidden";
+  }
+  function closeUserDrawer() {
+    $("#userDrawer")?.classList.remove("active");
+    $("#userDrawerOverlay")?.classList.remove("active");
+    if (!document.querySelector(".modal-overlay.active")) {
+      document.body.style.overflow = "";
+    }
+  }
+  function renderUserDrawerCategories() {
+    const container = $("#userDrawerCats");
+    if (!container) return;
+    if (!State.categories.length) {
+      container.innerHTML = `<div class="drawer-cat-pill"><span style="opacity:.6">No categories yet.</span></div>`;
+      return;
+    }
+    container.innerHTML = State.categories.map(c => `
+      <div class="drawer-cat-pill ${State.activeCategory===c.id?'active':''}" data-cat="${escapeHtml(c.id)}">
+        <i class="${escapeHtml(c.icon || 'ri-folder-line')}"></i>
+        <span>${escapeHtml(c.name)}</span>
+      </div>`).join("");
+    $$("#userDrawerCats .drawer-cat-pill").forEach(el => {
+      el.addEventListener("click", () => {
+        toggleCategory(el.dataset.cat);
+        closeUserDrawer();
+      });
+    });
+  }
+
+  // ---- Boot ----
+  async function bootUserPanel() {
+    if (!db) { showToast("Firebase not initialised. Check firebaseConfig.", "error", 5000); showSkeletons(); return; }
+    showSkeletons();
+    try {
+      await Promise.all([loadSettings(), loadCategories()]);
+      loadPrompts();
+      loadStats();
+    } catch (e) { console.error(e); showToast("Failed to load data: " + e.message, "error", 5000); }
+  }
+
+  async function loadSettings() {
+    return new Promise(resolve => {
+      db.ref("PROMPT_MANAGER/settings").on("value", snap => {
+        State.settings = snap.val() || null;
+        if (State.settings && State.settings.rewardAd) {
+          Object.assign(REWARD_AD_CONFIG, State.settings.rewardAd);
+        }
+        resolve();
+      }, () => resolve());
+    });
+  }
+  async function loadCategories() {
+    return new Promise(resolve => {
+      db.ref("PROMPT_MANAGER/categories").on("value", snap => {
+        const d = snap.val() || {};
+        State.categories = Object.values(d).filter(c => c && c.enabled !== false).sort((a,b)=>(a.displayOrder||0)-(b.displayOrder||0));
+        renderCategories();
+        renderCategoryChips();
+        populateAdminCategoryDropdowns();
+        resolve();
+      }, () => resolve());
+    });
+  }
+  function loadPrompts() {
+    db.ref("PROMPT_MANAGER/prompts_public").on("value", snap => {
+      const d = snap.val() || {};
+      State.prompts = Object.values(d).filter(p => p && p.published !== false).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      renderAllSections();
+      // Mirror to admin
+      AdminState.prompts = Object.values(snap.val() || {});
+      if (currentSection() === "prompts") renderPromptsTable();
+      if (currentSection() === "dashboard") renderDashboard();
+    }, err => console.error("prompts error", err));
+  }
+  function loadStats() {
+    db.ref("PROMPT_MANAGER/statistics").on("value", snap => {
+      const v = snap.val() || {};
+      $("#statTotal").textContent = formatNum(v.totalPrompts || State.prompts.length);
+      $("#statFree").textContent = formatNum(v.freePrompts || State.prompts.filter(p=>p.accessType==="Free").length);
+      $("#statLocked").textContent = formatNum(v.lockedPrompts || State.prompts.filter(p=>p.accessType==="Reward Locked").length);
+      $("#statViews").textContent = formatNum(v.totalViews || 0);
+    });
+  }
+
+  // ---- Skeletons ----
+  function showSkeletons() {
+    const skel = (n=6) => Array.from({length:n}, () =>
+      `<div class="prompt-card"><div class="thumb skeleton" style="height:160px"></div><div class="prompt-content"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton skeleton-line" style="width:80%"></div><div class="skeleton skeleton-line" style="width:40%"></div></div></div>`).join("");
+    $("#latestGrid").innerHTML = skel();
+    $("#featuredGrid").innerHTML = skel(4);
+    $("#popularGrid").innerHTML = skel(4);
+  }
+
+  // ---- Render categories ----
+  function renderCategories() {
+    const html = State.categories.map(c => `
+      <a class="cat-pill ${State.activeCategory===c.id?'active':''}" data-cat="${c.id}">
+        <i class="${escapeHtml(c.icon || 'ri-folder-line')}"></i>
+        <span>${escapeHtml(c.name)}</span>
+      </a>`).join("");
+    $("#catList").innerHTML = html || `<div class="cat-pill"><span>No categories yet.</span></div>`;
+    $$("#catList .cat-pill").forEach(el => el.addEventListener("click", () => toggleCategory(el.dataset.cat)));
+  }
+  function renderCategoryChips() {
+    const allActive = State.activeCategory === null;
+    const html = `<div class="cat-chip ${allActive?'active':''}" data-cat="all"><i class="ri-apps-line"></i> All</div>` +
+      State.categories.map(c => `<div class="cat-chip ${State.activeCategory===c.id?'active':''}" data-cat="${c.id}"><i class="${escapeHtml(c.icon || 'ri-folder-line')}"></i> ${escapeHtml(c.name)}</div>`).join("");
+    $("#catChips").innerHTML = html;
+    $$("#catChips .cat-chip").forEach(el => el.addEventListener("click", () => {
+      const c = el.dataset.cat;
+      toggleCategory(c === "all" ? null : c);
+    }));
+  }
+
+  // ---- Render prompt sections ----
+  function renderAllSections() {
+    if (State.searchQuery) { renderSearchResults(); return; }
+    if (State.activeCategory) { renderCategorySection(); return; }
+    hide($("#searchSection"));
+    const nav = State.activeNav;
+    const all = State.prompts;
+
+    if (nav === "home" || nav === "latest") {
+      show($("#latest")); $("#latest").querySelector("h2").innerHTML = `<i class="ri-flashlight-line"></i> Latest Prompts`;
+      renderGrid($("#latestGrid"), [...all].slice(0, 12));
+    } else hide($("#latest"));
+
+    if (nav === "home" || nav === "featured") {
+      const f = all.filter(p => p.featured);
+      if (f.length) { show($("#featuredSection")); renderGrid($("#featuredGrid"), f); } else hide($("#featuredSection"));
+    } else hide($("#featuredSection"));
+
+    if (nav === "home" || nav === "popular") {
+      const pop = all.filter(p => p.popular).sort((a,b)=>(b.views||0)-(a.views||0));
+      if (pop.length) { show($("#popularSection")); renderGrid($("#popularGrid"), pop); } else hide($("#popularSection"));
+    } else hide($("#popularSection"));
+
+    if (nav === "free") {
+      // All prompts are Free now — this filter just shows everything.
+      show($("#latest"));
+      $("#latest").querySelector("h2").innerHTML = `<i class="ri-unlock-line"></i> Free Prompts`;
+      renderGrid($("#latestGrid"), all);
+    }
+  }
+  function renderGrid(container, prompts) {
+    if (!prompts.length) {
+      container.innerHTML = `<div class="empty"><div class="ico">📭</div><h3>No prompts found</h3><p>Try a different category or search term.</p></div>`;
+      return;
+    }
+    container.classList.toggle("list-view", State.view === "list");
+    container.innerHTML = prompts.map(renderPromptCard).join("");
+    $$(".prompt-card", container).forEach(card => {
+      const id = card.dataset.id;
+      card.querySelector("[data-act='view']")?.addEventListener("click", () => openDetailModal(id));
+      card.querySelector("[data-act='copy-free']")?.addEventListener("click", () => copyFreePrompt(id));
+    });
+  }
+  function renderPromptCard(p) {
+    const cat = State.categories.find(c => c.id === p.categoryId);
+    const catName = cat ? cat.name : "Uncategorized";
+    const catIcon = cat ? (cat.icon || "ri-folder-line") : "ri-folder-line";
+    const thumb = renderThumbElement(p.thumbnail, p.title);  // returns <img class="thumb"> or <video class="thumb">
+    return `<article class="prompt-card" data-id="${escapeHtml(p.id)}">
+      ${thumb}
+      <div class="prompt-content">
+        <div class="tags">
+          <span><i class="${escapeHtml(catIcon)}"></i> ${escapeHtml(catName)}</span>
+          <span>${escapeHtml(p.type || "Text")}</span>
+          ${p.featured?`<span class="featured-tag"><i class="ri-star-line"></i> Featured</span>`:""}
+          ${p.popular?`<span class="featured-tag"><i class="ri-fire-line"></i> Popular</span>`:""}
+        </div>
+        <h3 class="prompt-title">${escapeHtml(p.title)}</h3>
+        <p class="prompt-desc">${escapeHtml(p.description || "")}</p>
+        <div class="stats">
+          <span><i class="ri-eye-line"></i> ${formatNum(p.views||0)}</span>
+          <span><i class="ri-file-copy-line"></i> ${formatNum(p.copies||0)}</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn-copy" data-act="copy-free"><i class="ri-file-copy-line"></i> Copy</button>
+        <button class="btn-view" data-act="view"><i class="ri-eye-line"></i> View</button>
+      </div>
+    </article>`;
+  }
+  function renderCategorySection() {
+    hide($("#featuredSection")); hide($("#popularSection")); show($("#latest"));
+    const cat = State.categories.find(c => c.id === State.activeCategory);
+    $("#latest").querySelector("h2").innerHTML = cat ? `Category: ${escapeHtml(cat.name)}` : "Category";
+    renderGrid($("#latestGrid"), State.prompts.filter(p => p.categoryId === State.activeCategory));
+  }
+  function renderSearchResults() {
+    hide($("#featuredSection")); hide($("#popularSection")); hide($("#latest")); show($("#searchSection"));
+    const q = State.searchQuery.toLowerCase();
+    const list = State.prompts.filter(p => `${p.title} ${p.description} ${p.type} ${p.accessType} ${p.categoryId}`.toLowerCase().includes(q));
+    $("#searchTitle").textContent = `Search Results (${list.length})`;
+    renderGrid($("#searchGrid"), list);
+  }
+  function hide(el) { if (el) el.style.display = "none"; }
+  function show(el) { if (el) el.style.display = ""; }
+
+  // ---- State changes ----
+  function setNav(nav) {
+    State.activeNav = nav; State.activeCategory = null;
+    $$("[data-nav]").forEach(b => b.classList.toggle("active", b.dataset.nav === nav));
+    renderCategories(); renderCategoryChips(); renderAllSections();
+  }
+  function setView(view) {
+    State.view = view;
+    // Persist preference so reload keeps the user's grid/list choice
+    try { localStorage.setItem("pm_view", view); } catch (e) {}
+    $$(".view-toggle button").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+    renderAllSections();
+  }
+  function toggleCategory(catId) {
+    State.activeCategory = (State.activeCategory === catId) ? null : catId;
+    State.activeNav = "home";
+    $$("[data-nav]").forEach(b => b.classList.toggle("active", b.dataset.nav === "home"));
+    renderCategories();
+    renderCategoryChips();
+    renderUserDrawerCategories();
+    renderAllSections();
+  }
+  function handleSearch(value) {
+    const q = (value || "").trim();
+    State.searchQuery = q;
+    $("#clearSearch").style.display = q ? "grid" : "none";
+    renderAllSections();
+  }
+
+  // ---- Detail modal ----
+  function openDetailModal(promptId) {
+    const p = State.prompts.find(x => x.id === promptId);
+    if (!p) return showToast("Prompt not found.", "error");
+    // Increment view counter FIRST (optimistic local + Firebase transaction)
+    // so the modal HTML below shows the updated count immediately.
+    incrementStat(p.id, "views");
+    p.views = (p.views || 0) + 1;
+
+    const cat = State.categories.find(c => c.id === p.categoryId);
+    const catName = cat ? cat.name : "Uncategorized";
+    const thumb = renderThumbElement(p.thumbnail, p.title);
+    // All prompts are Free now — text is always shown.
+    const text = p.fullContent || p.freeContent || "[Prompt text not yet saved by admin.]";
+    const contentBox = `<div class="prompt-text-box" id="promptTextBox">${escapeHtml(text)}</div>
+        <div style="display:flex;gap:8px"><button class="btn btn-ghost" id="shareBtn"><i class="ri-share-line"></i> Share</button><button class="btn btn-primary" id="copyPromptBtn" style="flex:2"><i class="ri-file-copy-line"></i> Copy Prompt</button></div>`;
+    const related = State.prompts.filter(x => x.id !== p.id && x.categoryId === p.categoryId).slice(0,4)
+      .map(x => `<div class="related-prompt" data-rel="${escapeHtml(x.id)}">${escapeHtml(x.title)}</div>`).join("");
+    $("#detailTitle").textContent = p.title;
+    $("#detailBody").innerHTML = `
+      <div class="detail-thumb">${thumb}</div>
+      <div class="detail-meta">
+        <span class="badge badge-free"><i class="ri-folder-line"></i> ${escapeHtml(catName)}</span>
+        <span class="badge badge-free"><i class="ri-article-line"></i> ${escapeHtml(p.type || "Text")}</span>
+        ${p.featured?`<span class="badge badge-featured"><i class="ri-star-line"></i> Featured</span>`:""}
+        ${p.popular?`<span class="badge badge-featured"><i class="ri-fire-line"></i> Popular</span>`:""}
+      </div>
+      <div class="detail-desc">${escapeHtml(p.description || "")}</div>
+      <div class="detail-stats">
+        <div><strong>${formatNum(p.views||0)}</strong> Views</div>
+        <div><strong>${formatNum(p.copies||0)}</strong> Copies</div>
+        <div><strong>${escapeHtml(p.type||"Text")}</strong> Type</div>
+        <div><strong>${formatDate(p.createdAt)}</strong> Created</div>
+      </div>
+      ${contentBox}
+      ${related ? `<div style="margin-top:22px"><h4 style="font-size:.95rem;margin-bottom:10px;color:var(--text-secondary)">Related Prompts</h4><div class="related-prompts">${related}</div></div>` : ""}
+    `;
+    const copyBtn = $("#copyPromptBtn"); if (copyBtn) copyBtn.addEventListener("click", () => copyPromptFromModal(p));
+    const shareBtn = $("#shareBtn"); if (shareBtn) shareBtn.addEventListener("click", () => sharePrompt(p));
+    $$(".related-prompt", $("#detailBody")).forEach(el => el.addEventListener("click", () => {
+      const id = el.dataset.rel; closeDetailModal(); openDetailModal(id);
+    }));
+    $("#detailOverlay").classList.add("active");
+    document.body.style.overflow = "hidden";
+  }
+  function closeDetailModal() {
+    $("#detailOverlay").classList.remove("active");
+    document.body.style.overflow = "";
+  }
+
+  // ---- Reward unlock modal ----
+  let pendingUnlockPromptId = null;
+  function openRewardModal(promptId) {
+    pendingUnlockPromptId = promptId;
+    $("#rewardStatus").style.display = "none";
+    $("#rewardStatus").className = "reward-status";
+    $("#adContainer").style.display = "none";
+    $("#adContainer").innerHTML = "";
+    $("#videoProgressWrap").style.display = "none";
+    $("#videoProgressFill").style.width = "0%";
+    // Hide the "Watch Ad" button — the video auto-plays on modal open
+    $("#watchAdBtn").style.display = "none";
+    $("#rewardOverlay").classList.add("active");
+    document.body.style.overflow = "hidden";
+    // Auto-trigger the reward video immediately. The user's click on the
+    // "Unlock" button on the prompt card counts as the user gesture that
+    // browsers require for autoplay permissions.
+    handleWatchAd();
+  }
+  function closeRewardModal() {
+    $("#rewardOverlay").classList.remove("active");
+    document.body.style.overflow = "";
+    pendingUnlockPromptId = null;
+    // Stop & remove any playing video / iframe in the ad container
+    const adContainer = $("#adContainer");
+    if (adContainer) {
+      try { adContainer.querySelectorAll("iframe,video").forEach(el => {
+        if (el.tagName === "VIDEO" && el.pause) el.pause();
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }); } catch (e) {}
+      adContainer.innerHTML = "";
+      adContainer.style.display = "none";
+    }
+    const wrap = $("#videoProgressWrap");
+    if (wrap) wrap.style.display = "none";
+  }
+  function setRewardStatus(text, type = "loading") {
+    const el = $("#rewardStatus");
+    el.style.display = "block";
+    el.className = `reward-status ${type}`;
+    el.innerHTML = type === "loading" ? `<span class="spinner"></span> ${escapeHtml(text)}` : escapeHtml(text);
+  }
+  async function handleWatchAd() {
+    if (!pendingUnlockPromptId) return;
+    if (!REWARD_AD_CONFIG.enabled) { setRewardStatus("Rewarded ads are currently disabled by the admin.", "error"); $("#watchAdBtn").style.display = ""; return; }
+    if (!window.RewardAdProvider || !window.RewardAdProvider.isAvailable()) {
+      setRewardStatus("Reward ad provider not configured. Please check back later.", "error");
+      $("#watchAdBtn").style.display = "";
+      return;
+    }
+    // Hide the watch button (we're auto-playing now); show the ad container
+    $("#watchAdBtn").style.display = "none";
+    $("#adContainer").style.display = "grid";
+    $("#adContainer").innerHTML = `<span class="spinner"></span> Loading video…`;
+    try {
+      await window.RewardAdProvider.showAd({
+        placementId: REWARD_AD_CONFIG.placementId,
+        onReward: async () => {
+          // ===== DEMO MODE for custom_video provider =====
+          // Skip the /api/verifyReward Cloud Function call (which would 404
+          // since Cloud Functions aren't deployed). The local onReward
+          // callback already confirms the user watched the video for the
+          // configured duration — that IS the verification for custom
+          // video rewards. We trust it and unlock locally.
+          //
+          // For real ad SDK providers (Monetag / Adsterra / AppLovin /
+          // Unity) you should deploy the Cloud Function and let the
+          // server-side path run instead. Switch the check below when
+          // you do.
+          const useServerVerification = REWARD_AD_CONFIG.provider !== "custom_video";
+          if (useServerVerification) {
+            setRewardStatus("Reward received — verifying with server…", "loading");
+            const result = await verifyRewardServerSide(pendingUnlockPromptId);
+            if (!result.verified) {
+              setRewardStatus(result.error || "Verification failed. Please try again.", "error");
+              showToast("Reward verification failed.", "error");
+              $("#watchAdBtn").style.display = "";
+              $("#adContainer").style.display = "none";
+              return;
+            }
+            State.unlockedPrompts.add(pendingUnlockPromptId);
+            persistSessionUnlock(pendingUnlockPromptId, result.expiresAt);
+          } else {
+            // Demo mode — trust local reward callback
+            setRewardStatus("✓ Video watched! Unlocking prompt…", "loading");
+            State.unlockedPrompts.add(pendingUnlockPromptId);
+            persistSessionUnlock(pendingUnlockPromptId, Date.now() + (REWARD_AD_CONFIG.unlockDurationMs || 86400000));
+          }
+          setRewardStatus("✓ Verified! Prompt unlocked.", "success");
+          showToast("Prompt unlocked successfully!", "success");
+          // Save the prompt ID locally — closeRewardModal() nulls it.
+          const unlockedPromptId = pendingUnlockPromptId;
+          setTimeout(() => {
+            closeRewardModal();
+            openDetailModal(unlockedPromptId);
+            renderAllSections();
+          }, 1100);
+        },
+        onClose: () => {
+          setRewardStatus("Ad closed without reward. Tap below to try again.", "error");
+          $("#watchAdBtn").style.display = "";
+          $("#watchAdBtn").innerHTML = `<i class="ri-play-circle-line"></i> Watch Ad Again`;
+          $("#adContainer").style.display = "none";
+        },
+        onError: (err) => {
+          console.error("Reward ad error", err);
+          const msg = (REWARD_AD_CONFIG.adErrorMessage) || "No video available right now. Please try again later.";
+          setRewardStatus(msg + (err && err.message ? ` (${err.message})` : ""), "error");
+          $("#watchAdBtn").style.display = "";
+          $("#watchAdBtn").innerHTML = `<i class="ri-play-circle-line"></i> Try Again`;
+          $("#adContainer").style.display = "none";
+        }
+      });
+    } catch (e) {
+      console.error("showAd error", e);
+      setRewardStatus(e.message || "Failed to load video.", "error");
+      $("#watchAdBtn").style.display = "";
+      $("#watchAdBtn").innerHTML = `<i class="ri-play-circle-line"></i> Try Again`;
+      $("#adContainer").style.display = "none";
+    }
+  }
+
+  // ---- Server-side reward verification ----
+  async function verifyRewardServerSide(promptId) {
+    try {
+      const res = await fetch("/api/verifyReward", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ promptId, deviceToken: getDeviceToken(), provider: REWARD_AD_CONFIG.provider, rewardId: "client_" + Date.now() })
+      });
+      if (!res.ok) { const e = await res.json().catch(()=>({})); return { verified: false, error: e.error || `HTTP ${res.status}` }; }
+      return await res.json();
+    } catch (e) { return { verified: false, error: e.message }; }
+  }
+
+  // ---- Fetch the prompt's fullContent (now lives in prompts_public) ----
+  // Used as a fallback when State.prompts doesn't have the prompt
+  // loaded yet (e.g., direct link ?p=ID where the full prompt isn't
+  // in the initial load).
+  async function fetchLockedContent(promptId) {
+    const box = $("#promptTextBox");
+    const copyBtn = $("#copyPromptBtn");
+    let content = null;
+    let lastError = null;
+
+    // ----- Attempt 1: Look in the already-loaded State.prompts -----
+    const fromState = State.prompts.find(x => x.id === promptId);
+    if (fromState && (fromState.fullContent || fromState.freeContent)) {
+      content = fromState.fullContent || fromState.freeContent;
+    }
+
+    // ----- Attempt 2: Direct Firebase read of prompts_public/<id>/fullContent -----
+    if (!content && db) {
+      try {
+        const snap = await db.ref("PROMPT_MANAGER/prompts_public/" + promptId + "/fullContent").once("value");
+        content = snap.val();
+        if (!content) {
+          // Backward-compat: legacy prompts may still store under freeContent
+          const snap2 = await db.ref("PROMPT_MANAGER/prompts_public/" + promptId + "/freeContent").once("value");
+          content = snap2.val();
+        }
+      } catch (e) {
+        lastError = e.message || "Permission denied";
+      }
+    }
+
+    // ----- Render result -----
+    if (content) {
+      if (box) box.textContent = content;
+      if (copyBtn) copyBtn.disabled = false;
+    } else {
+      if (box) box.textContent =
+        "[Unable to load prompt content.] " +
+        "Make sure the admin saved the full prompt text when creating the prompt. " +
+        "Last error: " + (lastError || "none");
+    }
+  }
+
+  // ---- Copy / share ----
+  async function copyPromptFromModal(p) {
+    // All prompts are Free now — text is in fullContent (legacy fallback: freeContent).
+    const text = p.fullContent || p.freeContent || "";
+    if (!text) { showToast("No prompt text available yet.", "error"); return; }
+    try {
+      await copyToClipboard(text);
+      incrementStat(p.id, "copies");
+      p.copies = (p.copies || 0) + 1;
+      showToast("Prompt copied to clipboard!", "success");
+    } catch (e) { showToast("Copy failed: " + e.message, "error"); }
+  }
+  async function copyFreePrompt(promptId) {
+    const p = State.prompts.find(x => x.id === promptId);
+    if (!p) return;
+    const text = p.fullContent || p.freeContent || "";
+    if (!text) { showToast("No prompt text available yet.", "error"); return; }
+    try {
+      await copyToClipboard(text);
+      showToast("Prompt copied!", "success");
+      incrementStat(p.id, "copies");
+      p.copies = (p.copies || 0) + 1;
+      renderAllSections();
+    } catch (e) { showToast("Copy failed: " + e.message, "error"); }
+  }
+  async function sharePrompt(p) {
+    const url = window.location.origin + window.location.pathname + "#home?p=" + encodeURIComponent(p.id);
+    if (navigator.share) {
+      try { await navigator.share({ title: p.title, text: p.description || "", url }); } catch (e) {}
+    } else {
+      try { await copyToClipboard(url); showToast("Share link copied!", "info"); }
+      catch (e) { showToast("Share not supported on this device.", "error"); }
+    }
+  }
+
+  // ---- Session unlock persistence ----
+  function persistSessionUnlock(promptId, expiresAt) {
+    let data = JSON.parse(localStorage.getItem("pm_unlocks") || "{}");
+    data[promptId] = expiresAt || (Date.now() + (REWARD_AD_CONFIG.unlockDurationMs || 86400000));
+    localStorage.setItem("pm_unlocks", JSON.stringify(data));
+  }
+  // Remove a single prompt's unlock from localStorage (called when
+  // the unlock is consumed — i.e. after a successful copy of a
+  // reward-locked prompt).
+  function removeSessionUnlock(promptId) {
+    const data = JSON.parse(localStorage.getItem("pm_unlocks") || "{}");
+    delete data[promptId];
+    localStorage.setItem("pm_unlocks", JSON.stringify(data));
+  }
+  function restoreSessionUnlocks() {
+    const data = JSON.parse(localStorage.getItem("pm_unlocks") || "{}");
+    const now = Date.now();
+    Object.keys(data).forEach(pid => {
+      if (data[pid] > now) State.unlockedPrompts.add(pid);
+      else delete data[pid];
+    });
+    localStorage.setItem("pm_unlocks", JSON.stringify(data));
+  }
+
+  // ---- Direct link (?p=<id>) ----
+  window.addEventListener("load", () => {
+    const params = new URLSearchParams(window.location.search);
+    const p = params.get("p");
+    if (p && State.prompts.length) setTimeout(() => openDetailModal(p), 500);
+    else if (p) {
+      db.ref("PROMPT_MANAGER/prompts_public/" + p).once("value", snap => {
+        if (snap.val()) { State.prompts.push(snap.val()); openDetailModal(p); }
+      });
+    }
+  });
+
+  console.log("[init] user panel logic loaded");
+  </script>
+
+  <script>
+  /* ==================================================================
+     SECTION 4 OF 4 — ADMIN PANEL LOGIC + EMBEDDED SAMPLE DATA
+     ================================================================== */
+
+  const AdminState = {
+    user: null,
+    categories: [],
+    prompts: [],
+    settings: null,
+    rewardEvents: [],
+    filter: { q: "", cat: "", access: "", published: "" },
+    editId: null,
+    pendingConfirm: null,
+  };
+
+  function bindAdminEvents() {
+    $("#themeBtnAdmin")?.addEventListener("click", () => { toggleTheme(); setThemeIcon("#themeIcoAdmin"); });
+    setThemeIcon("#themeIcoAdmin");
+
+    $("#signOutBtn")?.addEventListener("click", () => {
+      sessionStorage.removeItem("pm_admin_email");
+      AdminState.user = null;
+      showAdminLogin();
+      showToast("Signed out.", "info");
+    });
+    $("#adminDrawerSignOut")?.addEventListener("click", () => {
+      closeAdminDrawer();
+      sessionStorage.removeItem("pm_admin_email");
+      AdminState.user = null;
+      showAdminLogin();
+      showToast("Signed out.", "info");
+    });
+    $("#adminHamburger")?.addEventListener("click", openAdminDrawer);
+    $("#adminDrawerClose")?.addEventListener("click", closeAdminDrawer);
+    $("#adminDrawerOverlay")?.addEventListener("click", closeAdminDrawer);
+    $("#loginBtn")?.addEventListener("click", doLogin);
+    $("#loginPassword")?.addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+
+    $$(".sidebar-link[data-section]").forEach(link => link.addEventListener("click", () => {
+      goSection(link.dataset.section);
+      closeAdminDrawer();
+    }));
+    // Wire up drawer links too (they use data-section like the sidebar links)
+    $$("#adminDrawer [data-section]").forEach(link => link.addEventListener("click", () => {
+      goSection(link.dataset.section);
+      closeAdminDrawer();
+    }));
+    $("#addPromptBtn")?.addEventListener("click", () => { resetPromptForm(); goSection("new-prompt"); });
+    $("#addCatBtn")?.addEventListener("click", () => openCatModal(null));
+
+    // Auto-generate Display Order when the category changes:
+    // counts existing prompts in the selected category + 1.
+    $("#categoryId")?.addEventListener("change", autoSetDisplayOrder);
+
+    $("#promptForm")?.addEventListener("submit", async (e) => { e.preventDefault(); if (AdminState.editId) await updatePrompt(); else await savePrompt(); });
+    $("#cancelBtn")?.addEventListener("click", () => resetPromptForm());
+    $("#deleteBtn")?.addEventListener("click", () => deletePrompt(AdminState.editId));
+    $("#thumbFile")?.addEventListener("change", handleThumbUpload);
+
+    $("#catForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = $("#catId").value || generateId("c");
+      const data = {
+        id, name: $("#catName").value.trim(), icon: $("#catIcon").value.trim(),
+        image: $("#catImage").value.trim() || "", enabled: !!$("#catEnabled").checked,
+        displayOrder: Number($("#catOrder").value) || 0, createdAt: Date.now()
+      };
+      try {
+        await db.ref(`PROMPT_MANAGER/categories/${id}`).set(data);
+        showToast("Category saved.", "success"); closeCatModal();
+      } catch (e) { showToast("Save failed: " + e.message, "error"); }
+    });
+    $("#catDeleteBtn")?.addEventListener("click", () => {
+      const id = $("#catId").value; if (!id) return;
+      openConfirm("Delete Category?", "Prompts in this category will remain but become 'Uncategorised'. Continue?", "Delete", async () => {
+        await db.ref(`PROMPT_MANAGER/categories/${id}`).remove();
+        showToast("Category deleted.", "info"); closeCatModal();
+      });
+    });
+    $$("[data-close-cat]").forEach(b => b.addEventListener("click", closeCatModal));
+    $("#catModalOverlay")?.addEventListener("click", e => { if (e.target.id === "catModalOverlay") closeCatModal(); });
+
+    $("#confirmCancel")?.addEventListener("click", closeConfirm);
+    $("#confirmOk")?.addEventListener("click", () => { if (AdminState.pendingConfirm) AdminState.pendingConfirm(); closeConfirm(); });
+    $("#confirmOverlay")?.addEventListener("click", e => { if (e.target.id === "confirmOverlay") closeConfirm(); });
+
+    // Check admin login state from sessionStorage (replaces Firebase Auth listener)
+    checkAdminLogin();
+  }
+
+  function checkAdminLogin() {
+    const email = sessionStorage.getItem("pm_admin_email");
+    if (email === ADMIN_EMAIL) {
+      AdminState.user = { email };
+      $("#userEmail").textContent = email;
+      $("#userAvatar").textContent = email.slice(0, 1).toUpperCase();
+      if (location.hash === "#admin") showAdminApp();
+    } else {
+      AdminState.user = null;
+      if (location.hash === "#admin") showAdminLogin();
+    }
+  }
+
+  // ---- Admin mobile drawer ----
+  function openAdminDrawer() {
+    // Highlight the currently-active section link
+    $$("#adminDrawer [data-section]").forEach(l => {
+      l.classList.toggle("active", l.dataset.section === currentSection());
+    });
+    $("#adminDrawer")?.classList.add("active");
+    $("#adminDrawerOverlay")?.classList.add("active");
+    document.body.style.overflow = "hidden";
+  }
+  function closeAdminDrawer() {
+    $("#adminDrawer")?.classList.remove("active");
+    $("#adminDrawerOverlay")?.classList.remove("active");
+    if (!document.querySelector(".modal-overlay.active")) {
+      document.body.style.overflow = "";
+    }
+  }
+
+  function doLogin() {
+    const email = $("#loginEmail").value.trim();
+    const pass = $("#loginPassword").value;
+    if (!email || !pass) return showLoginError("Enter your email and password.");
+    // Hardcoded credentials check — no Firebase Auth involved.
+    if (email !== ADMIN_EMAIL || pass !== ADMIN_PASSWORD) {
+      return showLoginError("Invalid email or password.");
+    }
+    // Persist login in sessionStorage so reload keeps you logged in
+    // (until you close the tab or click sign out).
+    sessionStorage.setItem("pm_admin_email", email);
+    AdminState.user = { email };
+    $("#userEmail").textContent = email;
+    $("#userAvatar").textContent = email.slice(0, 1).toUpperCase();
+    showToast("Signed in as admin.", "success");
+    showAdminApp();
+  }
+  function prettyAuthError(code) {
+    // Kept for backward compatibility — no longer used since Firebase Auth
+    // is removed, but harmless.
+    const map = {
+      "auth/invalid-email": "Invalid email format.",
+      "auth/user-not-found": "No account with this email.",
+      "auth/wrong-password": "Wrong password. Please try again.",
+      "auth/too-many-requests": "Too many attempts. Try again later.",
+      "auth/network-request-failed": "Network error. Check your connection."
+    };
+    return map[code] || (code || "Login failed.");
+  }
+  function showLoginError(msg) {
+    const el = $("#loginError"); el.textContent = msg; el.style.display = "block";
+  }
+
+  function goSection(name) {
+    $$(".sidebar-link[data-section]").forEach(l => l.classList.toggle("active", l.dataset.section === name));
+    $$(".admin-section").forEach(s => s.classList.toggle("active", s.dataset.section === name));
+    if (name === "featured") renderFilteredTable($("#featuredTableBody"), p => p.featured);
+    if (name === "free") renderFilteredTable($("#freeTableBody"), p => p.accessType === "Free");
+    if (name === "prompts") renderPromptsTable();
+    if (name === "dashboard") renderDashboard();
+    if (name === "categories") renderCategoriesGrid();
+  }
+  function currentSection() {
+    const a = document.querySelector(".admin-section.active"); return a ? a.dataset.section : "dashboard";
+  }
+
+  function loadAdminCategoriesRT() {
+    db.ref("PROMPT_MANAGER/categories").on("value", snap => {
+      const d = snap.val() || {};
+      AdminState.categories = Object.values(d).sort((a,b)=>(a.displayOrder||0)-(b.displayOrder||0));
+      populateAdminCategoryDropdowns();
+      if (currentSection() === "categories") renderCategoriesGrid();
+    });
+  }
+
+  function populateAdminCategoryDropdowns() {
+    const opts = AdminState.categories.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join("");
+    const promptSel = $("#categoryId");
+    const filterSel = $("#filterCat");
+    const prev1 = promptSel?.value, prev2 = filterSel?.value;
+    if (promptSel) promptSel.innerHTML = opts || `<option value="">(no categories)</option>`;
+    if (filterSel) filterSel.innerHTML = `<option value="">All Categories</option>` + opts;
+    if (promptSel && prev1) promptSel.value = prev1;
+    if (filterSel && prev2) filterSel.value = prev2;
+    if (filterSel && !filterSel.dataset.bound) {
+      filterSel.addEventListener("change", () => { AdminState.filter.cat = filterSel.value; renderPromptsTable(); });
+      filterSel.dataset.bound = "1";
+    }
+  }
+  function bindPromptFilters() {
+    const q = $("#promptSearch");
+    if (q && !q.dataset.bound) {
+      q.addEventListener("input", debounce(() => { AdminState.filter.q = q.value; renderPromptsTable(); }, 250));
+      q.dataset.bound = "1";
+    }
+    const pub = $("#filterPublished");
+    if (pub && !pub.dataset.bound) { pub.addEventListener("change", () => { AdminState.filter.published = pub.value; renderPromptsTable(); }); pub.dataset.bound = "1"; }
+  }
+
+  function renderDashboard() {
+    const total = AdminState.prompts.length;
+    const views = AdminState.prompts.reduce((s,p)=>s + (p.views||0), 0);
+    const copies = AdminState.prompts.reduce((s,p)=>s + (p.copies||0), 0);
+    const stats = [
+      {label:"Total Prompts", value: total, icon: "ri-stack-line"},
+      {label:"Total Categories", value: AdminState.categories.length, icon: "ri-folders-line"},
+      {label:"Total Views", value: formatNum(views), icon: "ri-eye-line"},
+      {label:"Total Copies", value: formatNum(copies), icon: "ri-file-copy-line"},
+    ];
+    $("#dashStats").innerHTML = stats.map(s => `
+      <div class="stat-card">
+        <div class="stat-top"><div class="stat-ico"><i class="${s.icon}"></i></div></div>
+        <div class="stat-label">${s.label}</div>
+        <div class="stat-value">${s.value}</div>
+      </div>`).join("");
+  }
+
+  function renderPromptsTable() {
+    bindPromptFilters();
+    const tbody = $("#promptsTableBody");
+    let list = [...AdminState.prompts];
+    if (AdminState.filter.q) {
+      const q = AdminState.filter.q.toLowerCase();
+      list = list.filter(p => (p.title||"").toLowerCase().includes(q) || (p.id||"").toLowerCase().includes(q) || (p.description||"").toLowerCase().includes(q));
+    }
+    if (AdminState.filter.cat) list = list.filter(p => p.categoryId === AdminState.filter.cat);
+    if (AdminState.filter.published !== "") list = list.filter(p => String(!!p.published) === AdminState.filter.published);
+    if (!list.length) { tbody.innerHTML = `<tr><td colspan="6" class="empty">No prompts match your filters.</td></tr>`; return; }
+    tbody.innerHTML = list.map(promptRow).join("");
+    $$("#promptsTableBody [data-edit]").forEach(b => b.addEventListener("click", () => editPrompt(b.dataset.edit)));
+    $$("#promptsTableBody [data-del]").forEach(b => b.addEventListener("click", () => deletePrompt(b.dataset.del)));
+    $$("#promptsTableBody [data-toggle]").forEach(b => b.addEventListener("click", () => togglePublish(b.dataset.toggle)));
+  }
+  function promptRow(p) {
+    const cat = AdminState.categories.find(c => c.id === p.categoryId);
+    const catName = cat ? cat.name : "—";
+    const thumb = p.thumbnail ? `<img src="${escapeHtml(p.thumbnail)}" class="row-thumb" alt="" />` : `<div class="row-thumb" style="display:grid;place-items:center;color:var(--accent-purple)"><i class="ri-image-line"></i></div>`;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:10px">${thumb}<div><div class="cell-title">${escapeHtml(p.title)}</div><div class="cell-meta">${escapeHtml(p.id)}</div></div></div></td>
+      <td>${escapeHtml(catName)}</td>
+      <td>${escapeHtml(p.type || "Text")}</td>
+      <td><span class="cell-meta"><i class="ri-eye-line"></i> ${formatNum(p.views||0)} · <i class="ri-file-copy-line"></i> ${formatNum(p.copies||0)}</span></td>
+      <td>${p.published ? `<span class="badge badge-published">Published</span>` : `<span class="badge badge-unpublished">Unpublished</span>`}${p.featured?`<span class="badge badge-featured" style="margin-left:4px"><i class="ri-star-line"></i></span>`:""}</td>
+      <td><div class="row-actions">
+        <button class="btn-icon" data-edit="${escapeHtml(p.id)}" title="Edit"><i class="ri-edit-line"></i></button>
+        <button class="btn-icon" data-toggle="${escapeHtml(p.id)}" title="Toggle publish"><i class="ri-eye-off-line"></i></button>
+        <button class="btn-icon danger" data-del="${escapeHtml(p.id)}" title="Delete"><i class="ri-delete-bin-line"></i></button>
+      </div></td>
+    </tr>`;
+  }
+  function renderFilteredTable(container, predicate) {
+    if (!container) return;
+    const list = AdminState.prompts.filter(predicate);
+    if (!list.length) { container.innerHTML = `<div class="empty">No prompts here yet.</div>`; return; }
+    container.innerHTML = `<table class="data"><thead><tr><th>Prompt</th><th>Category</th><th>Stats</th><th>Actions</th></tr></thead><tbody>${list.map(promptRow).join("")}</tbody></table>`;
+    $$("[data-edit]", container).forEach(b => b.addEventListener("click", () => editPrompt(b.dataset.edit)));
+    $$("[data-del]", container).forEach(b => b.addEventListener("click", () => deletePrompt(b.dataset.del)));
+  }
+
+  // Auto-generate Display Order based on the selected category.
+  // Counts existing prompts in that category and sets the next number.
+  // e.g. if "AI Image Prompts" has 3 prompts, the new one gets displayOrder = 4.
+  // Admin can still manually override the value after it auto-fills.
+  function autoSetDisplayOrder() {
+    const catSel = $("#categoryId");
+    const orderInput = $("#displayOrder");
+    if (!catSel || !orderInput) return;
+    const categoryId = catSel.value;
+    if (!categoryId) return;  // no category selected yet
+    const existing = AdminState.prompts.filter(p => p.categoryId === categoryId);
+    const nextOrder = existing.length + 1;
+    orderInput.value = nextOrder;
+  }
+
+  function resetPromptForm() {
+    AdminState.editId = null;
+    $("#promptForm").reset();
+    $("#promptId").value = "";
+    $("#thumbnail").value = "";
+    $("#thumbPreview").style.display = "none";
+    $("#thumbPreview").src = "";
+    const vidPrev = $("#thumbPreviewVideo");
+    if (vidPrev) { vidPrev.pause(); vidPrev.removeAttribute("src"); vidPrev.style.display = "none"; }
+    const wrap = $("#thumbPreviewWrap");
+    if (wrap) wrap.style.display = "none";
+    $("#saveBtn").style.display = "inline-flex";
+    $("#updateBtn").style.display = "none";
+    $("#deleteBtn").style.display = "none";
+    $("#formTitle").textContent = "Add New Prompt";
+    $("#published").checked = true;
+    $("#displayOrder").value = 0;
+    $("#type").value = "Coding";
+    $("#accessType").value = "Free";
+  }
+  async function handleThumbUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Detect file kind
+    const isVideo = file.type.startsWith("video/");
+    const isGif = file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif");
+
+    // For videos and GIFs we store the original file as-is (no resize —
+    // we want to preserve animation/playback). Cap at 5 MB so the
+    // Realtime Database write stays reasonably fast.
+    if ((isVideo || isGif) && file.size > 5 * 1024 * 1024) {
+      showToast("Video/GIF too large. Max 5 MB — pick a shorter clip or smaller file.", "error", 6000);
+      return;
+    }
+
+    // Read as data URL — we ALWAYS use base64 (no Firebase Storage).
+    let dataUrl;
+    try {
+      dataUrl = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => reject(new Error("FileReader failed"));
+        r.readAsDataURL(file);
+      });
+    } catch (err) {
+      showToast("Upload failed: " + err.message, "error");
+      return;
+    }
+
+    // ----- Show preview (image OR video) -----
+    const imgPrev = $("#thumbPreview");
+    const vidPrev = $("#thumbPreviewVideo");
+    const wrap = $("#thumbPreviewWrap");
+    if (wrap) { wrap.style.display = "block"; }
+    if (isVideo) {
+      if (imgPrev) imgPrev.style.display = "none";
+      if (vidPrev) { vidPrev.src = dataUrl; vidPrev.style.display = "block"; }
+    } else {
+      if (vidPrev) { vidPrev.pause(); vidPrev.removeAttribute("src"); vidPrev.style.display = "none"; }
+      if (imgPrev) { imgPrev.src = dataUrl; imgPrev.style.display = "block"; }
+    }
+
+    // ----- Store -----
+    if (isVideo || isGif) {
+      // Store as-is — preserves animation/playback
+      $("#thumbnail").value = dataUrl;
+      const kb = (dataUrl.length / 1024).toFixed(1);
+      const mb = (file.size / 1024 / 1024).toFixed(2);
+      showToast(`${isVideo ? "Video" : "GIF"} stored (${mb} MB → ${kb} KB base64).`, "success");
+    } else {
+      // Regular image — resize to 100×100 (cover — center-crop to fill the square).
+      try {
+        const resized = await resizeImageTo100x100(dataUrl);
+        $("#thumbnail").value = resized;
+        const kb = (resized.length / 1024).toFixed(1);
+        showToast(`Thumbnail resized to 100×100 (${kb} KB base64).`, "success");
+      } catch (err) {
+        // If canvas resize fails for any reason (e.g. CORS-restricted image),
+        // fall back to storing the original data URL.
+        $("#thumbnail").value = dataUrl;
+        showToast("Resize failed, stored original image instead.", "info");
+      }
+    }
+  }
+
+  // Helper — given a thumbnail src (data URL or http URL), render the
+  // right element with class="thumb": <video> for video sources, <img> for
+  // everything else (including GIFs — browsers render them as animated <img>).
+  function renderThumbElement(src, alt) {
+    if (!src) {
+      // Placeholder — SVG with first letter of alt
+      return `<img class="thumb" src="${placeholderThumb(alt || "")}" alt="" loading="lazy" />`;
+    }
+    const isVideoSrc = src.startsWith("data:video/") ||
+      /\.(mp4|webm|ogg|mov|m4v|avi)(\?|$)/i.test(src);
+    if (isVideoSrc) {
+      return `<video class="thumb" src="${escapeHtml(src)}" autoplay muted loop playsinline></video>`;
+    }
+    return `<img class="thumb" src="${escapeHtml(src)}" alt="${escapeHtml(alt || "")}" loading="lazy" />`;
+  }
+
+  // Helper — resize an image data URL to 100x100 px with cover (center-crop).
+  // Returns a JPEG data URL at 85% quality (smaller than PNG).
+  function resizeImageTo100x100(dataUrl) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const SIZE = 100;
+          const canvas = document.createElement("canvas");
+          canvas.width = SIZE;
+          canvas.height = SIZE;
+          const ctx = canvas.getContext("2d");
+          // Compute source rect with cover (center-crop) behavior
+          const srcAspect = img.width / img.height;
+          let sx = 0, sy = 0, sw = img.width, sh = img.height;
+          if (srcAspect > 1) {
+            // Source is wider than tall → crop the sides
+            sw = img.height;
+            sx = (img.width - sw) / 2;
+          } else if (srcAspect < 1) {
+            // Source is taller than wide → crop top/bottom
+            sh = img.width;
+            sy = (img.height - sh) / 2;
+          }
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+        } catch (e) { reject(e); }
+      };
+      img.onerror = () => reject(new Error("Image load failed"));
+      img.src = dataUrl;
+    });
+  }
+  async function savePrompt() {
+    const id = generateId("p");
+    const now = Date.now();
+    const fullContent = $("#fullContent").value;
+    const accessType = $("#accessType").value;
+    // ALL prompt text lives in prompts_public/fullContent (publicly
+    // readable). The reward-lock is enforced purely on the UI side.
+    const publicNode = {
+      id, title: $("#title").value.trim(), categoryId: $("#categoryId").value,
+      description: $("#description").value.trim(), thumbnail: $("#thumbnail").value || "",
+      type: $("#type").value, accessType, featured: !!$("#featured").checked,
+      popular: !!$("#popular").checked, published: !!$("#published").checked,
+      displayOrder: Number($("#displayOrder").value) || 0,
+      fullContent,
+      createdAt: now, updatedAt: now, views: 0, copies: 0
+    };
+    try {
+      const updates = {};
+      updates[`PROMPT_MANAGER/prompts_public/${id}`] = publicNode;
+      await db.ref().update(updates);
+      showToast("Prompt saved successfully!", "success");
+      resetPromptForm(); goSection("prompts");
+    } catch (e) { showToast("Save failed: " + e.message, "error"); }
+  }
+  function editPrompt(id) {
+    const p = AdminState.prompts.find(x => x.id === id);
+    if (!p) return showToast("Prompt not found.", "error");
+    AdminState.editId = id;
+    goSection("new-prompt");
+    $("#promptId").value = id;
+    $("#title").value = p.title || "";
+    $("#categoryId").value = p.categoryId || "";
+    $("#description").value = p.description || "";
+    $("#type").value = p.type || "Text";
+    $("#accessType").value = p.accessType || "Free";
+    $("#displayOrder").value = p.displayOrder || 0;
+    $("#featured").checked = !!p.featured;
+    $("#popular").checked = !!p.popular;
+    $("#published").checked = p.published !== false;
+    $("#thumbnail").value = p.thumbnail || "";
+    // Show preview for existing thumbnail (image OR video)
+    const wrap = $("#thumbPreviewWrap");
+    if (p.thumbnail) {
+      const isVid = p.thumbnail.startsWith("data:video/") || /\.(mp4|webm|ogg|mov|m4v|avi)(\?|$)/i.test(p.thumbnail);
+      if (wrap) wrap.style.display = "block";
+      if (isVid) {
+        const vidPrev = $("#thumbPreviewVideo");
+        const imgPrev = $("#thumbPreview");
+        if (imgPrev) imgPrev.style.display = "none";
+        if (vidPrev) { vidPrev.src = p.thumbnail; vidPrev.style.display = "block"; }
+      } else {
+        const vidPrev = $("#thumbPreviewVideo");
+        const imgPrev = $("#thumbPreview");
+        if (vidPrev) { vidPrev.pause(); vidPrev.removeAttribute("src"); vidPrev.style.display = "none"; }
+        if (imgPrev) { imgPrev.src = p.thumbnail; imgPrev.style.display = "block"; }
+      }
+    } else {
+      if (wrap) wrap.style.display = "none";
+    }
+    // Load full prompt text from prompts_public/fullContent
+    // (backward-compat: fall back to legacy freeContent for older prompts).
+    if (p.fullContent) {
+      $("#fullContent").value = p.fullContent;
+    } else if (p.freeContent) {
+      $("#fullContent").value = p.freeContent;
+    } else {
+      // Legacy: text was in prompts_private — try one read for backward
+      // compat (rules may or may not still allow it; that's OK).
+      db.ref("PROMPT_MANAGER/prompts_private/" + id + "/fullContent").once("value")
+        .then(s => { if (s.val()) $("#fullContent").value = s.val(); })
+        .catch(() => {});
+    }
+    $("#saveBtn").style.display = "none";
+    $("#updateBtn").style.display = "inline-flex";
+    $("#deleteBtn").style.display = "inline-flex";
+    $("#formTitle").textContent = "Edit Prompt";
+  }
+  async function updatePrompt() {
+    if (!AdminState.editId) return;
+    const id = AdminState.editId;
+    const now = Date.now();
+    const fullContent = $("#fullContent").value;
+    const accessType = $("#accessType").value;
+    const original = AdminState.prompts.find(x => x.id === id) || {};
+    // Single source of truth: fullContent in prompts_public.
+    const publicNode = {
+      id, title: $("#title").value.trim(), categoryId: $("#categoryId").value,
+      description: $("#description").value.trim(), thumbnail: $("#thumbnail").value || "",
+      type: $("#type").value, accessType, featured: !!$("#featured").checked,
+      popular: !!$("#popular").checked, published: !!$("#published").checked,
+      displayOrder: Number($("#displayOrder").value) || 0,
+      fullContent,
+      createdAt: original.createdAt || now, updatedAt: now,
+      views: original.views || 0, copies: original.copies || 0
+    };
+    try {
+      const updates = {};
+      updates[`PROMPT_MANAGER/prompts_public/${id}`] = publicNode;
+      // Clean up any legacy prompts_private entry from the old data model.
+      updates[`PROMPT_MANAGER/prompts_private/${id}`] = null;
+      await db.ref().update(updates);
+      showToast("Prompt updated.", "success");
+      resetPromptForm(); goSection("prompts");
+    } catch (e) { showToast("Update failed: " + e.message, "error"); }
+  }
+  function deletePrompt(id) {
+    if (!id) return;
+    openConfirm("Delete Prompt?", "This will permanently delete the prompt and any locked content. This cannot be undone.", "Delete", async () => {
+      try {
+        const updates = {};
+        updates[`PROMPT_MANAGER/prompts_public/${id}`] = null;
+        updates[`PROMPT_MANAGER/prompts_private/${id}`] = null;  // legacy cleanup
+        await db.ref().update(updates);
+        showToast("Prompt deleted.", "success");
+        resetPromptForm(); goSection("prompts");
+      } catch (e) { showToast("Delete failed: " + e.message, "error"); }
+    });
+  }
+  function togglePublish(id) {
+    const p = AdminState.prompts.find(x => x.id === id);
+    if (!p) return;
+    const next = p.published === false ? true : false;
+    db.ref(`PROMPT_MANAGER/prompts_public/${id}/published`).set(next);
+    showToast(next ? "Prompt published." : "Prompt unpublished.", "info");
+  }
+
+  function openCatModal(cat) {
+    $("#catModalOverlay").classList.add("active");
+    if (cat) {
+      $("#catModalTitle").textContent = "Edit Category";
+      $("#catId").value = cat.id;
+      $("#catName").value = cat.name || "";
+      $("#catIcon").value = cat.icon || "";
+      $("#catImage").value = cat.image || "";
+      $("#catOrder").value = cat.displayOrder || 0;
+      $("#catEnabled").checked = cat.enabled !== false;
+      $("#catDeleteBtn").style.display = "inline-flex";
+    } else {
+      $("#catModalTitle").textContent = "Add Category";
+      $("#catForm").reset();
+      $("#catId").value = "";
+      $("#catEnabled").checked = true;
+      $("#catOrder").value = 0;
+      $("#catDeleteBtn").style.display = "none";
+    }
+  }
+  function closeCatModal() { $("#catModalOverlay").classList.remove("active"); }
+
+  function renderCategoriesGrid() {
+    if (!AdminState.categories.length) {
+      $("#catGrid").innerHTML = `<div class="empty"><div class="ico">📁</div><h3>No categories yet</h3><p>Click "Add Category" to create your first one.</p></div>`;
+      return;
+    }
+    $("#catGrid").innerHTML = AdminState.categories.map(c => `
+      <div class="cat-card">
+        <div class="cat-head">
+          <div class="cat-icon"><i class="${escapeHtml(c.icon || 'ri-folder-line')}"></i></div>
+          <div class="cat-name">${escapeHtml(c.name)}</div>
+        </div>
+        <div class="cell-meta" style="margin-top:4px">
+          Order: ${c.displayOrder || 0} · ${c.enabled !== false ? 'Enabled' : 'Disabled'}<br/>
+          ${AdminState.prompts.filter(p => p.categoryId === c.id).length} prompts
+        </div>
+        <div class="cat-actions">
+          <button class="btn btn-ghost btn-sm" data-edit-cat="${escapeHtml(c.id)}"><i class="ri-edit-line"></i> Edit</button>
+        </div>
+      </div>`).join("");
+    $$("[data-edit-cat]").forEach(b => b.addEventListener("click", () => {
+      const c = AdminState.categories.find(x => x.id === b.dataset.editCat);
+      if (c) openCatModal(c);
+    }));
+  }
+
+  function openConfirm(title, msg, okLabel, onOk) {
+    $("#confirmTitle").textContent = title;
+    $("#confirmMsg").textContent = msg;
+    $("#confirmOk").textContent = okLabel || "Confirm";
+    AdminState.pendingConfirm = onOk;
+    $("#confirmOverlay").classList.add("active");
+  }
+  function closeConfirm() { $("#confirmOverlay").classList.remove("active"); AdminState.pendingConfirm = null; }
+
+  console.log("[init] admin logic loaded");
+  </script>
+</body>
+</html>

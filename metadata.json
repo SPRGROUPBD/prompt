@@ -1,0 +1,6 @@
+{
+  "name": "PromptStudio — Unified Prompt Manager & Admin Workspace",
+  "description": "Browse, search, copy, and manage premium AI prompts with seamless single-tab switching between public Viewer Panel and open Admin Studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
