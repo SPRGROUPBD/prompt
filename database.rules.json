@@ -1,0 +1,46 @@
+{
+  "rules": {
+    "promptManager": {
+      ".read": true,
+      "adSettings": {
+        ".write": "auth != null && auth.token.email === 'mail.sajjadahmed@gmail.com'"
+      },
+      "rewardAds": {
+        ".write": "auth != null && auth.token.email === 'mail.sajjadahmed@gmail.com'"
+      },
+      "categories": {
+        ".write": "auth != null && auth.token.email === 'mail.sajjadahmed@gmail.com'"
+      },
+      "prompts": {
+        ".write": "auth != null && auth.token.email === 'mail.sajjadahmed@gmail.com'",
+        "$promptId": {
+          "views": {
+            ".write": true
+          },
+          "copies": {
+            ".write": true
+          },
+          "recentViews24h": {
+            ".write": true
+          },
+          "lastViewedAt": {
+            ".write": true
+          }
+        }
+      },
+      "settings": {
+        ".write": "auth != null && auth.token.email === 'mail.sajjadahmed@gmail.com'"
+      },
+      "users": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+    "PROMPT_MANAGER": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'mail.sajjadahmed@gmail.com'"
+    }
+  }
+}

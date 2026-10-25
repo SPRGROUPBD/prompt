@@ -61,13 +61,48 @@ export const AdSettingsSection: React.FC = () => {
     });
   };
 
+  const handleSetActive = (selectedProvider: RewardAdProvider) => {
+    setProvider(selectedProvider);
+    updateAdConfig({ provider: selectedProvider }, true);
+    const names: Record<RewardAdProvider, string> = {
+      admob: 'Google AdMob',
+      startio: 'Start.io',
+      unity: 'UnityAds',
+      wortise: 'Wortise',
+      custom_video: 'Custom Video'
+    };
+    showToast(`${names[selectedProvider]} is now the active rewarded ad network!`, 'success');
+  };
+
   const handleTestAd = () => {
-    const targetPrompt = prompts.find((p) => p.accessType === 'Reward Locked') || prompts[0];
-    if (targetPrompt) {
-      setActiveRewardPrompt(targetPrompt);
-    } else {
-      showToast('No prompts in library to test unlock with', 'error');
-    }
+    const targetPrompt = prompts.find((p) => p.accessType === 'Reward Locked') || prompts[0] || {
+      id: 'test_ad_preview',
+      title: 'Real Rewarded Video Ad Test',
+      categoryId: 'cat_test',
+      type: 'Text',
+      accessType: 'Reward Locked',
+      description: 'Live test of active ad network',
+      fullContent: 'Real video ad watched and verified! Test prompt unlocked.',
+      thumbnail: '',
+      displayOrder: 1,
+      featured: false,
+      popular: false,
+      published: true,
+      views: 0,
+      copies: 0,
+      tags: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    setActiveRewardPrompt(targetPrompt);
+    const names: Record<RewardAdProvider, string> = {
+      admob: 'Google AdMob',
+      startio: 'Start.io',
+      unity: 'UnityAds',
+      wortise: 'Wortise',
+      custom_video: 'Custom Video'
+    };
+    showToast(`Launching real ad playback from active network: ${names[provider]}...`, 'info');
   };
 
   return (
@@ -79,17 +114,17 @@ export const AdSettingsSection: React.FC = () => {
             Rewarded Video Ads & Network Settings
           </h2>
           <p className="text-xs text-slate-400">
-            Configure SDK credentials for AdMob, Start.io, UnityAds, and Wortise rewarded video ad units.
+            Configure SDK credentials for AdMob, Start.io, UnityAds, and Wortise. Whichever network is set to active serves the real rewarded video ads.
           </p>
         </div>
 
         <button
           type="button"
           onClick={handleTestAd}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors border border-slate-700 self-start sm:self-auto"
+          className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors shadow-sm shadow-emerald-600/30 self-start sm:self-auto cursor-pointer"
         >
-          <Play className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Test Rewarded Ad Flow</span>
+          <Play className="w-3.5 h-3.5 fill-current" />
+          <span>Test Real Ad Flow</span>
         </button>
       </div>
 
@@ -155,16 +190,27 @@ export const AdSettingsSection: React.FC = () => {
           </div>
 
           {/* 1. Google AdMob */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className={`p-4 rounded-xl transition-all ${provider === 'admob' ? 'bg-slate-950 border-2 border-emerald-500/60 shadow-lg shadow-emerald-500/10' : 'bg-slate-950/70 border border-slate-800/80'}`}>
+            <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-xs font-bold text-white">Google AdMob</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${provider === 'admob' ? 'bg-emerald-400 ring-4 ring-emerald-400/20' : 'bg-slate-600'}`} />
+                <span className="text-sm font-bold text-white">Google AdMob</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/50 font-medium">Google Ads</span>
               </div>
-              {provider === 'admob' && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Active Provider
-                </span>
+              {provider === 'admob' ? (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>ACTIVE NETWORK</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleSetActive('admob')}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3 text-emerald-400" />
+                  <span>Set as Active</span>
+                </button>
               )}
             </div>
 
@@ -186,16 +232,27 @@ export const AdSettingsSection: React.FC = () => {
           </div>
 
           {/* 2. Start.io */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className={`p-4 rounded-xl transition-all ${provider === 'startio' ? 'bg-slate-950 border-2 border-amber-500/60 shadow-lg shadow-amber-500/10' : 'bg-slate-950/70 border border-slate-800/80'}`}>
+            <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-400" />
-                <span className="text-xs font-bold text-white">Start.io</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${provider === 'startio' ? 'bg-amber-400 ring-4 ring-amber-400/20' : 'bg-slate-600'}`} />
+                <span className="text-sm font-bold text-white">Start.io</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950/60 text-amber-400 border border-amber-800/50 font-medium">StartApp SDK</span>
               </div>
-              {provider === 'startio' && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                  Active Provider
-                </span>
+              {provider === 'startio' ? (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>ACTIVE NETWORK</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleSetActive('startio')}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-amber-600 hover:text-white text-slate-300 border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>Set as Active</span>
+                </button>
               )}
             </div>
 
@@ -217,16 +274,27 @@ export const AdSettingsSection: React.FC = () => {
           </div>
 
           {/* 3. UnityAds */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className={`p-4 rounded-xl transition-all ${provider === 'unity' ? 'bg-slate-950 border-2 border-sky-500/60 shadow-lg shadow-sky-500/10' : 'bg-slate-950/70 border border-slate-800/80'}`}>
+            <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-sky-400" />
-                <span className="text-xs font-bold text-white">UnityAds</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${provider === 'unity' ? 'bg-sky-400 ring-4 ring-sky-400/20' : 'bg-slate-600'}`} />
+                <span className="text-sm font-bold text-white">UnityAds</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-sky-950/60 text-sky-400 border border-sky-800/50 font-medium">Gaming Network</span>
               </div>
-              {provider === 'unity' && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 border border-sky-500/30">
-                  Active Provider
-                </span>
+              {provider === 'unity' ? (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-xs">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" />
+                  <span>ACTIVE NETWORK</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleSetActive('unity')}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-sky-600 hover:text-white text-slate-300 border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3 text-sky-400" />
+                  <span>Set as Active</span>
+                </button>
               )}
             </div>
 
@@ -260,16 +328,27 @@ export const AdSettingsSection: React.FC = () => {
           </div>
 
           {/* 4. Wortise */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className={`p-4 rounded-xl transition-all ${provider === 'wortise' ? 'bg-slate-950 border-2 border-violet-500/60 shadow-lg shadow-violet-500/10' : 'bg-slate-950/70 border border-slate-800/80'}`}>
+            <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-violet-400" />
-                <span className="text-xs font-bold text-white">Wortise</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${provider === 'wortise' ? 'bg-violet-400 ring-4 ring-violet-400/20' : 'bg-slate-600'}`} />
+                <span className="text-sm font-bold text-white">Wortise</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-violet-950/60 text-violet-400 border border-violet-800/50 font-medium">Mediation</span>
               </div>
-              {provider === 'wortise' && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-violet-500/20 text-violet-400 border border-violet-500/30">
-                  Active Provider
-                </span>
+              {provider === 'wortise' ? (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-violet-500/20 text-violet-300 border border-violet-500/40 shadow-xs">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />
+                  <span>ACTIVE NETWORK</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleSetActive('wortise')}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-violet-600 hover:text-white text-slate-300 border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3 text-violet-400" />
+                  <span>Set as Active</span>
+                </button>
               )}
             </div>
 
@@ -303,16 +382,27 @@ export const AdSettingsSection: React.FC = () => {
           </div>
 
           {/* 5. Custom Video / Fallback */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className={`p-4 rounded-xl transition-all ${provider === 'custom_video' ? 'bg-slate-950 border-2 border-indigo-500/60 shadow-lg shadow-indigo-500/10' : 'bg-slate-950/70 border border-slate-800/80'}`}>
+            <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-indigo-400" />
-                <span className="text-xs font-bold text-white">Custom / Direct Video Showcase</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${provider === 'custom_video' ? 'bg-indigo-400 ring-4 ring-indigo-400/20' : 'bg-slate-600'}`} />
+                <span className="text-sm font-bold text-white">Custom / Direct Video Showcase</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-950/60 text-indigo-400 border border-indigo-800/50 font-medium">Direct Video</span>
               </div>
-              {provider === 'custom_video' && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                  Active Provider
-                </span>
+              {provider === 'custom_video' ? (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-xs">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>ACTIVE NETWORK</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleSetActive('custom_video')}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-300 border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3 text-indigo-400" />
+                  <span>Set as Active</span>
+                </button>
               )}
             </div>
 

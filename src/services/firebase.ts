@@ -8,6 +8,8 @@ import {
   onAuthStateChanged,
   updateProfile,
   User,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import {
   getDatabase,
@@ -32,14 +34,17 @@ export const firebaseConfig = {
 };
 
 export const FIXED_ADMIN_EMAIL = "mail.sajjadahmed@gmail.com";
+export const FIXED_ADMIN_UID = "nhLkfnaza9c3RgUkZeLZvEtT0D33";
 
 // Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const rtdb = getDatabase(app);
 
-// Helper to determine if an email is the fixed admin
+// Helper to determine if a user is the fixed admin
 export const isAdminUser = (user: User | null): boolean => {
-  if (!user || !user.email) return false;
-  return user.email.toLowerCase().trim() === FIXED_ADMIN_EMAIL.toLowerCase();
+  if (!user) return false;
+  const emailMatch = user.email && user.email.toLowerCase().trim() === FIXED_ADMIN_EMAIL.toLowerCase();
+  const uidMatch = user.uid === FIXED_ADMIN_UID;
+  return Boolean(emailMatch || uidMatch);
 };

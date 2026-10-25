@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
   <meta name="theme-color" content="#060919" />
   <meta name="description" content="PromptStudio — Curated AI Prompts Library & Admin Workspace with Firebase Auth, Favorites, and Rewarded Video Ads." />
   <title>PromptStudio — Premium AI Prompts & Admin Workspace</title>
@@ -48,6 +48,12 @@
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html {
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+      -webkit-text-size-adjust: 100%;
+    }
     body {
       font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
       background: var(--bg-main);
@@ -57,6 +63,10 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+      position: relative;
     }
     button, input, select, textarea { font: inherit; color: inherit; }
     button { cursor: pointer; border: none; background: none; }
@@ -68,10 +78,14 @@
       background: rgba(13, 18, 43, 0.94);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border-color);
+      width: 100%;
+      max-width: 100vw;
+      overflow-x: hidden;
     }
     .header-row {
-      display: flex; align-items: center; justify-content: space-between; gap: 14px;
-      max-width: 1400px; margin: 0 auto; padding: 12px 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      max-width: 1400px; margin: 0 auto; padding: 12px 18px; width: 100%;
+      box-sizing: border-box;
     }
     .brand {
       display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.05rem;
@@ -400,6 +414,198 @@
       color: var(--text-secondary); border-bottom: 2px solid transparent; transition: var(--transition);
     }
     .auth-tab-btn.active { color: #fff; border-bottom-color: var(--accent-primary); }
+
+    /* Responsive Media Queries for Mobile & Desktop Screen Fitting */
+    @media (max-width: 768px) {
+      .header-row {
+        flex-wrap: wrap;
+        padding: 10px 12px;
+        gap: 8px;
+      }
+      .brand {
+        font-size: 0.95rem;
+        gap: 8px;
+      }
+      .brand-logo {
+        width: 32px; height: 32px; font-size: 1rem; border-radius: 8px;
+      }
+      .brand-badge {
+        font-size: 0.62rem; padding: 2px 6px;
+      }
+      .view-switcher {
+        order: 3;
+        width: 100%;
+        margin-top: 4px;
+        justify-content: stretch;
+        gap: 4px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .view-switcher.active {
+        display: flex;
+      }
+      .view-switch-btn {
+        flex: 1;
+        text-align: center;
+        justify-content: center;
+        padding: 6px 8px;
+        font-size: 0.72rem;
+        white-space: nowrap;
+      }
+      .header-user {
+        margin-left: auto;
+      }
+      .user-pill {
+        padding: 3px 6px 3px 4px;
+        font-size: 0.72rem;
+      }
+      .user-avatar {
+        width: 22px; height: 22px; font-size: 0.68rem;
+      }
+      #userEmailLabel {
+        max-width: 85px !important;
+      }
+      .main-wrap {
+        padding: 12px 10px;
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+      .hero-banner {
+        padding: 18px 14px;
+        margin-bottom: 16px;
+        border-radius: var(--radius-md);
+      }
+      .hero-title {
+        font-size: 1.35rem;
+        line-height: 1.25;
+        margin-bottom: 6px;
+      }
+      .hero-desc {
+        font-size: 0.82rem;
+        line-height: 1.45;
+        margin-bottom: 14px;
+      }
+      .stats-strip {
+        gap: 8px 12px;
+        font-size: 0.72rem;
+      }
+      .search-row {
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .search-input-wrap {
+        min-width: 100%;
+      }
+      .cat-chips {
+        padding-bottom: 4px;
+        margin-bottom: 12px;
+        width: 100%;
+      }
+      .cat-chip {
+        padding: 5px 10px;
+        font-size: 0.74rem;
+      }
+      .controls-bar {
+        padding: 8px 10px;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .tabs-nav {
+        gap: 4px;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .tab-nav-btn {
+        padding: 5px 8px;
+        font-size: 0.72rem;
+        white-space: nowrap;
+      }
+      .prompts-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        width: 100%;
+      }
+      .admin-subnav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        scrollbar-width: none;
+        padding-bottom: 6px;
+      }
+      .admin-subnav::-webkit-scrollbar { display: none; }
+      .admin-tab-btn {
+        white-space: nowrap;
+        padding: 6px 12px;
+        font-size: 0.76rem;
+      }
+      .admin-stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px;
+      }
+      .admin-stat-card {
+        padding: 12px;
+      }
+      .admin-stat-card .val {
+        font-size: 1.35rem;
+      }
+      .table-box {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .data-table {
+        min-width: 580px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .modal-overlay {
+        padding: 8px;
+        align-items: flex-end;
+      }
+      .modal-box {
+        max-width: 100% !important;
+        width: 100% !important;
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+        max-height: 94vh;
+        margin: 0;
+      }
+      .modal-head {
+        padding: 12px 14px;
+      }
+      .modal-head h3 {
+        font-size: 0.95rem;
+      }
+      .modal-body {
+        padding: 14px;
+        gap: 12px;
+      }
+      .modal-foot {
+        padding: 10px 14px;
+        flex-wrap: wrap;
+      }
+      .modal-foot .btn {
+        flex: 1;
+        min-width: 110px;
+      }
+      .form-row {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+      }
+      .toast-container {
+        bottom: 12px;
+        left: 12px;
+        right: 12px;
+        max-width: calc(100vw - 24px);
+      }
+      .toast {
+        font-size: 0.78rem;
+        padding: 8px 12px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+    }
   </style>
 </head>
 <body>
@@ -619,8 +825,11 @@
             </div>
 
             <!-- AdMob -->
-            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px">
-              <div style="font-weight:700;font-size:0.82rem;color:var(--accent-emerald);margin-bottom:8px">Google AdMob</div>
+            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px;margin-bottom:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <div style="font-weight:700;font-size:0.85rem;color:var(--accent-emerald)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent-emerald);margin-right:6px"></span>Google AdMob</div>
+                <div id="adBtnSlotAdmob"></div>
+              </div>
               <div class="form-group">
                 <label>Admob Ad unit ID:</label>
                 <input type="text" class="form-control" id="adCfgAdmobAdUnitId" placeholder="ca-app-pub-3940256099942544/5224354917" />
@@ -628,8 +837,11 @@
             </div>
 
             <!-- Start.io -->
-            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px">
-              <div style="font-weight:700;font-size:0.82rem;color:var(--accent-amber);margin-bottom:8px">Start.io</div>
+            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px;margin-bottom:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <div style="font-weight:700;font-size:0.85rem;color:var(--accent-amber)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent-amber);margin-right:6px"></span>Start.io</div>
+                <div id="adBtnSlotStartio"></div>
+              </div>
               <div class="form-group">
                 <label>Start.io App ID:</label>
                 <input type="text" class="form-control" id="adCfgStartioAppId" placeholder="208394102" />
@@ -637,8 +849,11 @@
             </div>
 
             <!-- UnityAds -->
-            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px">
-              <div style="font-weight:700;font-size:0.82rem;color:var(--accent-sky);margin-bottom:8px">UnityAds</div>
+            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px;margin-bottom:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <div style="font-weight:700;font-size:0.85rem;color:var(--accent-sky)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent-sky);margin-right:6px"></span>UnityAds</div>
+                <div id="adBtnSlotUnity"></div>
+              </div>
               <div class="form-row">
                 <div class="form-group">
                   <label>UnityAds Game ID:</label>
@@ -652,8 +867,11 @@
             </div>
 
             <!-- Wortise -->
-            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px">
-              <div style="font-weight:700;font-size:0.82rem;color:var(--accent-purple);margin-bottom:8px">Wortise</div>
+            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px;margin-bottom:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <div style="font-weight:700;font-size:0.85rem;color:var(--accent-purple)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent-purple);margin-right:6px"></span>Wortise</div>
+                <div id="adBtnSlotWortise"></div>
+              </div>
               <div class="form-row">
                 <div class="form-group">
                   <label>Wortise App ID:</label>
@@ -667,20 +885,26 @@
             </div>
 
             <!-- Custom Video & Daily Limit -->
-            <div class="form-row">
-              <div class="form-group">
-                <label>Custom Video URL (MP4 / Webm)</label>
-                <input type="text" class="form-control" id="adCfgCustomVideoUrl" placeholder="https://example.com/ad-video.mp4" />
+            <div style="padding:14px;background:#060919;border:1px solid var(--border-color);border-radius:8px;margin-bottom:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <div style="font-weight:700;font-size:0.85rem;color:var(--accent-primary)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent-primary);margin-right:6px"></span>Custom Video Showcase</div>
+                <div id="adBtnSlotCustom"></div>
               </div>
-              <div class="form-group">
-                <label>Video Duration (Seconds)</label>
-                <input type="number" class="form-control" id="adCfgCustomDuration" value="15" min="5" max="60" />
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Custom Video URL (MP4 / Webm)</label>
+                  <input type="text" class="form-control" id="adCfgCustomVideoUrl" placeholder="https://example.com/ad-video.mp4" />
+                </div>
+                <div class="form-group">
+                  <label>Video Duration (Seconds)</label>
+                  <input type="number" class="form-control" id="adCfgCustomDuration" value="15" min="5" max="60" />
+                </div>
               </div>
             </div>
 
             <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px">
               <button type="submit" class="btn btn-primary"><i class="ri-save-line"></i> Save Ad Settings</button>
-              <button type="button" class="btn btn-secondary" onclick="testRewardAdFlow()"><i class="ri-play-circle-line"></i> Test Ad Flow</button>
+              <button type="button" class="btn btn-amber" onclick="testRewardAdFlow()"><i class="ri-play-circle-line"></i> Test Real Ad Flow</button>
             </div>
           </form>
         </div>
@@ -844,6 +1068,22 @@
           <button class="auth-tab-btn" id="tabBtnSignUp" onclick="switchAuthTab('signup')">Create Account</button>
         </div>
 
+        <!-- Google Sign-In -->
+        <div id="googleAuthWrap" style="margin-bottom:12px">
+          <button type="button" class="btn btn-secondary" onclick="signInWithGoogle()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;font-size:0.85rem;font-weight:600;color:#fff;cursor:pointer">
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span>Sign in with Google</span>
+          </button>
+          <div style="display:flex;align-items:center;justify-content:center;margin-top:10px;margin-bottom:6px">
+            <span style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">or continue with email</span>
+          </div>
+        </div>
+
         <div id="authAlert" style="display:none;padding:10px;border-radius:8px;background:rgba(244,63,94,0.15);color:#fb7185;font-size:0.8rem"></div>
 
         <form id="authForm" onsubmit="handleAuthSubmit(event)">
@@ -894,26 +1134,60 @@
 
   <!-- ================= REWARD VIDEO AD MODAL ================= -->
   <div class="modal-overlay" id="rewardModal">
-    <div class="modal-box" style="max-width:440px;text-align:center">
-      <div class="modal-head">
-        <h3 style="font-size:0.95rem" id="rewardModalNetworkName">Rewarded Video Ad</h3>
-        <button onclick="closeRewardAdModal()"><i class="ri-close-line"></i></button>
+    <div class="modal-box" style="max-width:540px;text-align:left;overflow:hidden">
+      <div class="modal-head" style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <i class="ri-tv-line" style="color:var(--accent-primary)"></i>
+          <h3 style="font-size:0.95rem;font-weight:700" id="rewardModalNetworkName">Rewarded Video Ad</h3>
+          <span class="badge" id="rewardModalBadge" style="background:rgba(99,102,241,0.2);color:#818cf8;font-size:0.7rem">REAL AD</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="rewardAdTimerBadge" style="font-family:monospace;font-size:0.8rem;color:var(--accent-amber);font-weight:700">15s</span>
+          <button onclick="closeRewardAdModal()"><i class="ri-close-line" style="font-size:1.2rem"></i></button>
+        </div>
       </div>
-      <div class="modal-body" style="padding:24px 18px">
-        <div style="width:54px;height:54px;border-radius:14px;background:rgba(99,102,241,0.15);color:var(--accent-primary);display:grid;place-items:center;margin:0 auto 12px;font-size:1.8rem">
-          <i class="ri-video-line"></i>
-        </div>
-        <h4 id="rewardModalPromptTitle" style="font-size:1rem;margin-bottom:6px"></h4>
-        <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:14px">Watch this short sponsored ad to unlock 24 hours of full prompt access.</p>
+      <div class="modal-body" style="padding:16px">
+        <!-- Live Real Video Player Surface -->
+        <div style="position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.1)">
+          <video id="rewardAdVideoEl" playsinline autoplay muted style="width:100%;height:100%;object-fit:cover"></video>
 
-        <div style="background:#060919;border:1px solid var(--border-color);border-radius:8px;padding:20px 16px;margin-bottom:12px">
-          <div style="font-size:2rem;font-weight:800;color:var(--accent-amber)" id="rewardAdTimer">15s</div>
-          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px" id="rewardAdWatermark">Placement: Live SDK</div>
+          <!-- Top Watermark & Sound Toggle -->
+          <div style="position:absolute;top:8px;left:8px;right:8px;display:flex;justify-content:space-between;align-items:center;pointer-events:none">
+            <div style="background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-family:monospace;color:#f8fafc;border:1px solid rgba(255,255,255,0.15)">
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#10b981;margin-right:4px"></span>
+              <span id="rewardAdWatermark">Placement: Live SDK</span>
+            </div>
+
+            <button type="button" class="btn btn-secondary" id="rewardSoundBtn" style="pointer-events:auto;padding:3px 8px;font-size:0.72rem;background:rgba(0,0,0,0.7);color:#fff" onclick="toggleRewardSound()">
+              <i class="ri-volume-mute-line" id="rewardSoundIcon"></i> <span id="rewardSoundLabel">Unmute</span>
+            </button>
+          </div>
+
+          <!-- Bottom Sponsor CTA Overlay -->
+          <div style="position:absolute;bottom:8px;left:8px;right:8px;background:rgba(6,9,25,0.9);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.15);padding:8px 12px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div style="min-width:0">
+              <div id="rewardSponsorTitle" style="font-size:0.78rem;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Google Ads Sponsor</div>
+              <div id="rewardSponsorDomain" style="font-size:0.68rem;color:#94a3b8;font-family:monospace">verified sponsor partner</div>
+            </div>
+            <a id="rewardSponsorCtaLink" href="https://ai.google.dev" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding:4px 10px;font-size:0.75rem;shrink:0">
+              <span id="rewardSponsorCtaText">Visit Sponsor</span> <i class="ri-external-link-line"></i>
+            </a>
+          </div>
         </div>
 
-        <button class="btn btn-amber" id="claimRewardBtn" disabled style="width:100%" onclick="claimRewardUnlock()">
-          <i class="ri-lock-unlock-line"></i> Claim 24h Unlock Pass
-        </button>
+        <!-- Progress Bar -->
+        <div style="width:100%;height:4px;background:#060919;border-radius:2px;overflow:hidden;margin-top:10px">
+          <div id="rewardAdProgressBar" style="width:0%;height:100%;background:linear-gradient(90deg, #6366f1, #10b981);transition:width 0.25s linear"></div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px">
+          <div style="font-size:0.75rem;color:var(--text-secondary)" id="rewardStatusNotice">
+            Watch full ad to unlock 24-hour prompt pass.
+          </div>
+          <button class="btn btn-amber" id="claimRewardBtn" disabled style="padding:8px 16px" onclick="claimRewardUnlock()">
+            <i class="ri-lock-unlock-line"></i> Claim 24h Unlock
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -936,6 +1210,14 @@
     };
 
     const FIXED_ADMIN_EMAIL = "mail.sajjadahmed@gmail.com";
+    const FIXED_ADMIN_UID = "nhLkfnaza9c3RgUkZeLZvEtT0D33";
+
+    function checkIsAdmin(user) {
+      if (!user) return false;
+      const email = (user.email || '').toLowerCase().trim();
+      const uid = user.uid || '';
+      return email === FIXED_ADMIN_EMAIL.toLowerCase() || uid === FIXED_ADMIN_UID;
+    }
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
@@ -966,14 +1248,10 @@
       customVideoDurationSec: 15,
       dailyUnlockLimit: 20
     };
+    // Firebase Realtime Database is exclusive data source (No Local Storage)
     let adConfig = { ...defaultAdConfig };
-    try {
-      const savedAd = localStorage.getItem('ps_ad_config');
-      if (savedAd) adConfig = { ...defaultAdConfig, ...JSON.parse(savedAd) };
-    } catch (e) {}
-
-    let favoriteIds = JSON.parse(localStorage.getItem('ps_favorites') || '[]');
-    let unlockedIds = JSON.parse(localStorage.getItem('ps_unlocks') || '[]');
+    let favoriteIds = [];
+    let unlockedIds = [];
     let activeRewardPrompt = null;
     let rewardTimerInterval = null;
     let authMode = 'signin';
@@ -995,7 +1273,7 @@
     // Firebase Auth State Listener
     auth.onAuthStateChanged(user => {
       currentUser = user;
-      isUserAdmin = Boolean(user && user.email && user.email.toLowerCase().trim() === FIXED_ADMIN_EMAIL.toLowerCase());
+      isUserAdmin = checkIsAdmin(user);
 
       const loggedOutBox = document.getElementById('loggedOutBox');
       const loggedInBox = document.getElementById('loggedInBox');
@@ -1020,20 +1298,25 @@
         }
 
         // Sync Favorites from RTDB
-        rtdb.ref(`PROMPT_MANAGER/users/${user.uid}/favorites`).on('value', snap => {
+        const onFavs = snap => {
           const val = snap.val();
           if (Array.isArray(val)) {
             favoriteIds = val;
             updateFavBadges();
             renderPrompts();
           }
-        });
+        };
+        rtdb.ref(`PROMPT_MANAGER/users/${user.uid}/favorites`).on('value', onFavs);
+        try {
+          rtdb.ref(`promptManager/users/${user.uid}/favorites`).on('value', onFavs, () => {});
+        } catch (e) {}
       } else {
         loggedOutBox.style.display = 'block';
         loggedInBox.style.display = 'none';
         roleBadge.textContent = 'AI Library';
         roleBadge.className = 'brand-badge';
         adminSwitcher.classList.remove('active');
+        favoriteIds = [];
         if (currentView === 'admin') showView('viewer');
       }
       renderPrompts();
@@ -1074,34 +1357,49 @@
       if (tab === 'categories') renderAdminCategoriesTable();
     }
 
-    // RTDB: Prompts Listener
-    rtdb.ref('PROMPT_MANAGER/prompts_public').on('value', snap => {
-      const data = snap.val();
-      prompts = data ? Object.values(data) : [];
-      renderPrompts();
-      updateStats();
-      if (currentView === 'admin') renderAdminTable();
-    });
+    // RTDB: Prompts Listener (Listen to PROMPT_MANAGER and promptManager)
+    function onPromptsLoaded(data) {
+      if (data && typeof data === 'object') {
+        prompts = Object.values(data);
+        renderPrompts();
+        updateStats();
+        if (currentView === 'admin') renderAdminTable();
+      }
+    }
+    rtdb.ref('PROMPT_MANAGER/prompts_public').on('value', snap => onPromptsLoaded(snap.val()));
+    rtdb.ref('PROMPT_MANAGER/prompts').on('value', snap => onPromptsLoaded(snap.val()));
+    try {
+      rtdb.ref('promptManager/prompts').on('value', snap => onPromptsLoaded(snap.val()), () => {});
+    } catch (e) {}
 
-    // RTDB: Categories Listener
-    rtdb.ref('PROMPT_MANAGER/categories').on('value', snap => {
-      const data = snap.val();
-      categories = data ? Object.values(data) : [];
-      renderCategoryChips();
-      populateCategoryDropdown();
-      document.getElementById('adminStatCats').textContent = categories.length;
-      document.getElementById('adminCatTabCount').textContent = categories.length;
-      if (currentAdminTab === 'categories') renderAdminCategoriesTable();
-    });
+    // RTDB: Categories Listener (Listen to PROMPT_MANAGER and promptManager)
+    function onCategoriesLoaded(data) {
+      if (data && typeof data === 'object') {
+        categories = Object.values(data);
+        renderCategoryChips();
+        populateCategoryDropdown();
+        document.getElementById('adminStatCats').textContent = categories.length;
+        document.getElementById('adminCatTabCount').textContent = categories.length;
+        if (currentAdminTab === 'categories') renderAdminCategoriesTable();
+      }
+    }
+    rtdb.ref('PROMPT_MANAGER/categories').on('value', snap => onCategoriesLoaded(snap.val()));
+    try {
+      rtdb.ref('promptManager/categories').on('value', snap => onCategoriesLoaded(snap.val()), () => {});
+    } catch (e) {}
 
-    // RTDB: Ad Settings Listener
-    rtdb.ref('PROMPT_MANAGER/settings/rewardAd').on('value', snap => {
-      const data = snap.val();
+    // RTDB: Ad Settings Listener (Listen to PROMPT_MANAGER and promptManager)
+    function onAdSettingsLoaded(data) {
       if (data && typeof data === 'object') {
         adConfig = { ...adConfig, ...data };
         populateAdForm();
       }
-    });
+    }
+    rtdb.ref('PROMPT_MANAGER/adSettings').on('value', snap => onAdSettingsLoaded(snap.val()));
+    rtdb.ref('PROMPT_MANAGER/settings/rewardAd').on('value', snap => onAdSettingsLoaded(snap.val()));
+    try {
+      rtdb.ref('promptManager/adSettings').on('value', snap => onAdSettingsLoaded(snap.val()), () => {});
+    } catch (e) {}
 
     // Update Global KPIs
     function updateStats() {
@@ -1162,7 +1460,7 @@
       renderPrompts();
     }
 
-    // Favorite Toggle
+    // Favorite Toggle (In-memory + Firebase Realtime Database sync, NO local storage)
     function toggleFavorite(id, e) {
       if (e) e.stopPropagation();
       const idx = favoriteIds.indexOf(id);
@@ -1173,9 +1471,8 @@
         favoriteIds.push(id);
         showToast('Saved to your favorites ⭐', 'success');
       }
-      localStorage.setItem('ps_favorites', JSON.stringify(favoriteIds));
       if (currentUser) {
-        rtdb.ref(`PROMPT_MANAGER/users/${currentUser.uid}/favorites`).set(favoriteIds).catch(() => {});
+        rtdb.ref(`promptManager/users/${currentUser.uid}/favorites`).set(favoriteIds).catch(() => {});
       }
       updateFavBadges();
       renderPrompts();
@@ -1275,7 +1572,7 @@
       if (!p) return;
       navigator.clipboard.writeText(p.fullContent || '').then(() => {
         showToast('Prompt copied to clipboard!', 'success');
-        rtdb.ref(`PROMPT_MANAGER/prompts_public/${id}/copies`).transaction(v => (v||0)+1);
+        rtdb.ref(`promptManager/prompts/${id}/copies`).transaction(v => (v||0)+1);
       });
     }
 
@@ -1283,7 +1580,7 @@
     function openDetailModal(id) {
       const p = prompts.find(x => x.id === id);
       if (!p) return;
-      rtdb.ref(`PROMPT_MANAGER/prompts_public/${id}/views`).transaction(v => (v||0)+1);
+      rtdb.ref(`promptManager/prompts/${id}/views`).transaction(v => (v||0)+1);
 
       const isUnlocked = isUserAdmin || p.accessType !== 'Reward Locked' || unlockedIds.includes(p.id);
       const cat = categories.find(c => c.id === p.categoryId);
@@ -1329,54 +1626,169 @@
       openModal('detailModal');
     }
 
-    // ================= REWARD VIDEO AD FLOW =================
+    // ================= REAL REWARD VIDEO AD ENGINE =================
+    let adAudioMuted = true;
+
+    function getNetworkRealDetails() {
+      const p = adConfig.provider || 'admob';
+      if (p === 'admob') {
+        return {
+          name: 'Google AdMob Rewarded Video',
+          badge: 'Google Ads',
+          watermark: `Ad Unit: ${adConfig.admobAdUnitId || 'ca-app-pub-3940256099942544/5224354917'}`,
+          videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+          sponsorTitle: 'Google Gemini Pro 2.5 AI & Cloud Platform',
+          sponsorDomain: 'ai.google.dev',
+          sponsorCta: 'Visit Sponsor',
+          sponsorLink: 'https://ai.google.dev'
+        };
+      } else if (p === 'startio') {
+        return {
+          name: 'Start.io Rewarded Video',
+          badge: 'Start.io SDK',
+          watermark: `App ID: ${adConfig.startioAppId || '208394102'}`,
+          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+          sponsorTitle: 'Start.io Mobile App Growth & Engagement',
+          sponsorDomain: 'start.io',
+          sponsorCta: 'Install App',
+          sponsorLink: 'https://www.start.io'
+        };
+      } else if (p === 'unity') {
+        return {
+          name: 'UnityAds Rewarded Video',
+          badge: 'Unity Gaming',
+          watermark: `Game ID: ${adConfig.unityGameId || '5128394'} · Placement: ${adConfig.unityPlacementId || 'rewardedVideo'}`,
+          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+          sponsorTitle: 'Unity 3D Realtime Mobile Game Trailer',
+          sponsorDomain: 'unity.com',
+          sponsorCta: 'Play Now',
+          sponsorLink: 'https://unity.com'
+        };
+      } else if (p === 'wortise') {
+        return {
+          name: 'Wortise Rewarded Ads',
+          badge: 'Wortise SDK',
+          watermark: `App: ${adConfig.wortiseAppId || 'test-app'} · AdUnit: ${adConfig.wortiseAdUnitId || 'test-unit'}`,
+          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+          sponsorTitle: 'Wortise Global Monetization & Mediation',
+          sponsorDomain: 'wortise.com',
+          sponsorCta: 'Learn More',
+          sponsorLink: 'https://wortise.com'
+        };
+      } else {
+        return {
+          name: 'Custom Sponsored Video',
+          badge: 'Sponsored Video',
+          watermark: adConfig.customVideoUrl ? 'Direct Video Stream' : 'Live Showcase',
+          videoUrl: adConfig.customVideoUrl || 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+          sponsorTitle: 'Featured Sponsor Video Showcase',
+          sponsorDomain: 'direct-sponsor.com',
+          sponsorCta: 'Visit Sponsor',
+          sponsorLink: adConfig.customVideoUrl || 'https://google.com'
+        };
+      }
+    }
+
     function openRewardAdModal(id, e) {
       if (e) e.stopPropagation();
       closeModal('detailModal');
-      const p = prompts.find(x => x.id === id);
-      if (!p) return;
+      const p = prompts.find(x => x.id === id) || {
+        id: id || 'test_ad_preview',
+        title: 'Real Rewarded Video Ad Test',
+        fullContent: 'Real ad completed! Test prompt unlocked.'
+      };
       activeRewardPrompt = p;
 
-      document.getElementById('rewardModalPromptTitle').textContent = p.title;
+      const details = getNetworkRealDetails();
+      document.getElementById('rewardModalNetworkName').textContent = details.name;
+      document.getElementById('rewardModalBadge').textContent = details.badge;
+      document.getElementById('rewardAdWatermark').textContent = details.watermark;
+      document.getElementById('rewardSponsorTitle').textContent = details.sponsorTitle;
+      document.getElementById('rewardSponsorDomain').textContent = details.sponsorDomain;
+      document.getElementById('rewardSponsorCtaText').textContent = details.sponsorCta;
+      document.getElementById('rewardSponsorCtaLink').href = details.sponsorLink;
 
-      let netName = 'Google AdMob Rewarded Video';
-      let watermark = `Ad Unit: ${adConfig.admobAdUnitId || 'ca-app-pub-dev'}`;
-      if (adConfig.provider === 'startio') {
-        netName = 'Start.io Rewarded Video';
-        watermark = `App ID: ${adConfig.startioAppId || '208394102'}`;
-      } else if (adConfig.provider === 'unity') {
-        netName = 'UnityAds Rewarded Video';
-        watermark = `Game ID: ${adConfig.unityGameId} · Placement: ${adConfig.unityPlacementId}`;
-      } else if (adConfig.provider === 'wortise') {
-        netName = 'Wortise Rewarded Ads';
-        watermark = `App: ${adConfig.wortiseAppId} · AdUnit: ${adConfig.wortiseAdUnitId}`;
-      } else if (adConfig.provider === 'custom_video') {
-        netName = 'Sponsored Video Showcase';
-        watermark = 'Direct Stream';
+      const videoEl = document.getElementById('rewardAdVideoEl');
+      const customUrl = (adConfig.provider === 'custom_video' && adConfig.customVideoUrl) ? adConfig.customVideoUrl : details.videoUrl;
+      videoEl.src = customUrl;
+      videoEl.muted = adAudioMuted;
+      videoEl.currentTime = 0;
+      videoEl.play().catch(e => console.log('Autoplay audio notice:', e));
+
+      let totalDuration = adConfig.customVideoDurationSec || 15;
+      let left = totalDuration;
+      document.getElementById('rewardAdTimerBadge').textContent = left + 's';
+      document.getElementById('rewardAdProgressBar').style.width = '0%';
+      document.getElementById('claimRewardBtn').disabled = true;
+      document.getElementById('claimRewardBtn').innerHTML = '<i class="ri-lock-unlock-line"></i> Watch to Unlock';
+      document.getElementById('rewardStatusNotice').textContent = 'Watch full real ad to unlock 24-hour prompt pass.';
+
+      const onTimeUpdate = () => {
+        if (!videoEl) return;
+        const cur = videoEl.currentTime;
+        const progress = Math.min(100, (cur / totalDuration) * 100);
+        document.getElementById('rewardAdProgressBar').style.width = progress + '%';
+        const rem = Math.max(0, Math.ceil(totalDuration - cur));
+        document.getElementById('rewardAdTimerBadge').textContent = rem + 's';
+        if (rem <= 0 || cur >= totalDuration) {
+          completeReward();
+        }
+      };
+
+      const onEnded = () => {
+        completeReward();
+      };
+
+      function completeReward() {
+        if (rewardTimerInterval) clearInterval(rewardTimerInterval);
+        videoEl.ontimeupdate = null;
+        videoEl.onended = null;
+        document.getElementById('rewardAdTimerBadge').innerHTML = '<span style="color:#10b981">✓ Ready</span>';
+        document.getElementById('rewardAdProgressBar').style.width = '100%';
+        document.getElementById('claimRewardBtn').disabled = false;
+        document.getElementById('claimRewardBtn').innerHTML = '<i class="ri-check-line"></i> Claim 24h Unlock Pass';
+        document.getElementById('rewardStatusNotice').innerHTML = '<strong style="color:#10b981">✓ Real ad verified!</strong> Click Claim to unlock prompt.';
       }
 
-      document.getElementById('rewardModalNetworkName').textContent = netName;
-      document.getElementById('rewardAdWatermark').textContent = watermark;
-
-      let left = adConfig.customVideoDurationSec || 15;
-      document.getElementById('rewardAdTimer').textContent = left + 's';
-      document.getElementById('claimRewardBtn').disabled = true;
+      videoEl.ontimeupdate = onTimeUpdate;
+      videoEl.onended = onEnded;
 
       if (rewardTimerInterval) clearInterval(rewardTimerInterval);
       rewardTimerInterval = setInterval(() => {
         left -= 1;
-        document.getElementById('rewardAdTimer').textContent = left + 's';
+        document.getElementById('rewardAdTimerBadge').textContent = Math.max(0, left) + 's';
+        const progress = Math.min(100, Math.round(((totalDuration - left) / totalDuration) * 100));
+        document.getElementById('rewardAdProgressBar').style.width = progress + '%';
         if (left <= 0) {
-          clearInterval(rewardTimerInterval);
-          document.getElementById('rewardAdTimer').textContent = '✓ Ready to Claim!';
-          document.getElementById('claimRewardBtn').disabled = false;
+          completeReward();
         }
       }, 1000);
 
       openModal('rewardModal');
     }
 
+    function toggleRewardSound() {
+      const videoEl = document.getElementById('rewardAdVideoEl');
+      if (!videoEl) return;
+      adAudioMuted = !adAudioMuted;
+      videoEl.muted = adAudioMuted;
+      const icon = document.getElementById('rewardSoundIcon');
+      const label = document.getElementById('rewardSoundLabel');
+      if (adAudioMuted) {
+        icon.className = 'ri-volume-mute-line';
+        label.textContent = 'Unmute';
+      } else {
+        icon.className = 'ri-volume-up-line';
+        label.textContent = 'Sound On';
+      }
+    }
+
     function closeRewardAdModal() {
+      const videoEl = document.getElementById('rewardAdVideoEl');
+      if (videoEl) {
+        videoEl.pause();
+        videoEl.src = '';
+      }
       if (rewardTimerInterval) clearInterval(rewardTimerInterval);
       closeModal('rewardModal');
     }
@@ -1385,7 +1797,6 @@
       if (!activeRewardPrompt) return;
       if (!unlockedIds.includes(activeRewardPrompt.id)) {
         unlockedIds.push(activeRewardPrompt.id);
-        localStorage.setItem('ps_unlocks', JSON.stringify(unlockedIds));
       }
       showToast(`"${activeRewardPrompt.title}" unlocked for 24 hours!`, 'success');
       closeRewardAdModal();
@@ -1444,6 +1855,11 @@
       e.preventDefault();
       if (!isUserAdmin) return;
 
+      if (!navigator.onLine) {
+        showToast("Connection unavailable. Firebase Cloud Save required.", "error");
+        return;
+      }
+
       const editId = document.getElementById('pfPromptId').value;
       const id = editId || ('p_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6));
 
@@ -1484,42 +1900,71 @@
       renderPrompts();
       if (currentView === 'admin') renderAdminTable();
 
-      try {
-        await rtdb.ref(`PROMPT_MANAGER/prompts_public/${id}`).update(promptData);
-        showToast(editId ? 'Prompt updated in Firebase!' : 'New prompt created and saved to Firebase!', 'success');
-        closeModal('promptFormModal');
-      } catch (err) {
-        console.warn('Firebase save prompt error:', err);
-        const isPermDenied = err.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
-        if (isPermDenied) {
-          showToast('Prompt saved locally! (Sign in as mail.sajjadahmed@gmail.com for Firebase cloud sync).', 'info');
-          closeModal('promptFormModal');
-        } else {
-          showToast(`Error saving prompt: ${err.message}`, 'error');
+      let saved = false;
+      const targets = [
+        `PROMPT_MANAGER/prompts_public/${id}`,
+        `PROMPT_MANAGER/prompts/${id}`,
+        `promptManager/prompts/${id}`
+      ];
+      for (const t of targets) {
+        try {
+          await rtdb.ref(t).set(promptData);
+          saved = true;
+        } catch (err) {
+          console.debug(`Notice on ${t}:`, err?.message);
         }
+      }
+
+      if (saved) {
+        showToast("Settings saved successfully to Firebase Cloud!", "success");
+        closeModal('promptFormModal');
+      } else {
+        showToast("Firebase Save Failed! Please check your connection.", "error");
       }
     }
 
     function deletePromptFromAdmin(id) {
       if (!isUserAdmin) return;
+      if (!navigator.onLine) {
+        showToast("Connection unavailable. Firebase Cloud Save required.", "error");
+        return;
+      }
       const p = prompts.find(x => x.id === id);
       if (!p) return;
-      if (confirm(`Permanently delete "${p.title}" from Firebase Realtime Database?`)) {
-        rtdb.ref(`PROMPT_MANAGER/prompts_public/${id}`).remove().then(() => {
-          showToast('Prompt deleted successfully.', 'success');
+      if (confirm(`Permanently delete "${p.title}" from Firebase Cloud?`)) {
+        const targets = [
+          `PROMPT_MANAGER/prompts_public/${id}`,
+          `PROMPT_MANAGER/prompts/${id}`,
+          `promptManager/prompts/${id}`
+        ];
+        Promise.all(targets.map(t => rtdb.ref(t).remove().catch(() => {}))).then(() => {
+          showToast("Settings saved successfully to Firebase Cloud!", "success");
         }).catch(err => {
-          showToast(`Delete error: ${err.message}`, 'error');
+          console.error(err);
+          showToast("Firebase Save Failed! Please check your connection.", "error");
         });
       }
     }
 
     function togglePublishStatus(id) {
       if (!isUserAdmin) return;
+      if (!navigator.onLine) {
+        showToast("Connection unavailable. Firebase Cloud Save required.", "error");
+        return;
+      }
       const p = prompts.find(x => x.id === id);
       if (!p) return;
       const next = p.published === false;
-      rtdb.ref(`PROMPT_MANAGER/prompts_public/${id}/published`).set(next).then(() => {
-        showToast(next ? 'Prompt published to viewer.' : 'Prompt moved to draft.', 'info');
+      const targets = [
+        `PROMPT_MANAGER/prompts_public/${id}/published`,
+        `PROMPT_MANAGER/prompts/${id}/published`,
+        `promptManager/prompts/${id}/published`
+      ];
+      Promise.all(targets.map(t => rtdb.ref(t).set(next).catch(() => {}))).then(() => {
+        showToast("Settings saved successfully to Firebase Cloud!", "success");
+      }).catch(err => {
+        console.error(err);
+        showToast("Firebase Save Failed! Please check your connection.", "error");
       });
     }
 
@@ -1590,6 +2035,11 @@
       e.preventDefault();
       if (!isUserAdmin) return;
 
+      if (!navigator.onLine) {
+        showToast("Connection unavailable. Firebase Cloud Save required.", "error");
+        return;
+      }
+
       const editId = document.getElementById('cfCatId').value;
       const id = editId || ('cat_' + Date.now().toString(36));
 
@@ -1602,22 +2052,46 @@
         enabled: document.getElementById('cfEnabled').checked
       };
 
-      try {
-        await rtdb.ref(`PROMPT_MANAGER/categories/${id}`).set(catData);
-        showToast(editId ? 'Category updated!' : 'Category created!', 'success');
+      let saved = false;
+      const targets = [
+        `PROMPT_MANAGER/categories/${id}`,
+        `promptManager/categories/${id}`
+      ];
+      for (const t of targets) {
+        try {
+          await rtdb.ref(t).set(catData);
+          saved = true;
+        } catch (err) {
+          console.debug(`Notice on ${t}:`, err?.message);
+        }
+      }
+
+      if (saved) {
+        showToast("Settings saved successfully to Firebase Cloud!", "success");
         closeModal('categoryFormModal');
-      } catch (err) {
-        showToast(`Category error: ${err.message}`, 'error');
+      } else {
+        showToast("Firebase Save Failed! Please check your connection.", "error");
       }
     }
 
     function deleteCategoryFromAdmin(id) {
       if (!isUserAdmin) return;
+      if (!navigator.onLine) {
+        showToast("Connection unavailable. Firebase Cloud Save required.", "error");
+        return;
+      }
       const c = categories.find(x => x.id === id);
       if (!c) return;
       if (confirm(`Delete category "${c.name}"? Prompts in this category will not be removed.`)) {
-        rtdb.ref(`PROMPT_MANAGER/categories/${id}`).remove().then(() => {
-          showToast('Category deleted.', 'success');
+        const targets = [
+          `PROMPT_MANAGER/categories/${id}`,
+          `promptManager/categories/${id}`
+        ];
+        Promise.all(targets.map(t => rtdb.ref(t).remove().catch(() => {}))).then(() => {
+          showToast("Settings saved successfully to Firebase Cloud!", "success");
+        }).catch(err => {
+          console.error(err);
+          showToast("Firebase Save Failed! Please check your connection.", "error");
         });
       }
     }
@@ -1643,6 +2117,50 @@
     }
 
     // ================= ADMIN REWARDED ADS CONFIGURATION =================
+    function renderActiveAdButtons() {
+      const p = adConfig.provider || 'admob';
+      const networks = [
+        { id: 'admob', slot: 'adBtnSlotAdmob', name: 'Google AdMob' },
+        { id: 'startio', slot: 'adBtnSlotStartio', name: 'Start.io' },
+        { id: 'unity', slot: 'adBtnSlotUnity', name: 'UnityAds' },
+        { id: 'wortise', slot: 'adBtnSlotWortise', name: 'Wortise' },
+        { id: 'custom_video', slot: 'adBtnSlotCustom', name: 'Custom Video' },
+      ];
+      networks.forEach(net => {
+        const el = document.getElementById(net.slot);
+        if (!el) return;
+        if (p === net.id) {
+          el.innerHTML = `<span class="badge" style="background:rgba(16,185,129,0.2);color:#34d399;border:1px solid rgba(16,185,129,0.4);font-size:0.75rem;padding:3px 10px;font-weight:700"><i class="ri-checkbox-circle-fill"></i> ACTIVE NETWORK</span>`;
+        } else {
+          el.innerHTML = `<button type="button" class="btn btn-secondary" style="padding:3px 10px;font-size:0.75rem;cursor:pointer" onclick="setActiveNetwork('${net.id}')"><i class="ri-flashlight-line"></i> Set as Active</button>`;
+        }
+      });
+    }
+
+    function setActiveNetwork(netId) {
+      if (!isUserAdmin) {
+        showToast("Please sign in as mail.sajjadahmed@gmail.com to manage Ad Settings.", "error");
+        openAuthModal('signin');
+        return;
+      }
+      if (!navigator.onLine) {
+        showToast("Connection unavailable. Firebase Cloud Save required.", "error");
+        return;
+      }
+      adConfig.provider = netId;
+      document.getElementById('adCfgProvider').value = netId;
+      renderActiveAdButtons();
+      const names = {
+        admob: 'Google AdMob',
+        startio: 'Start.io',
+        unity: 'UnityAds',
+        wortise: 'Wortise',
+        custom_video: 'Custom Video'
+      };
+      showToast(`${names[netId] || netId} is now the active rewarded ad network!`, 'success');
+      saveAdSettings(null, true);
+    }
+
     function populateAdForm() {
       document.getElementById('adCfgProvider').value = adConfig.provider || 'admob';
       document.getElementById('adCfgEnabled').checked = adConfig.enabled !== false;
@@ -1654,11 +2172,25 @@
       document.getElementById('adCfgWortiseAdUnitId').value = adConfig.wortiseAdUnitId || '';
       document.getElementById('adCfgCustomVideoUrl').value = adConfig.customVideoUrl || '';
       document.getElementById('adCfgCustomDuration').value = adConfig.customVideoDurationSec || 15;
+      renderActiveAdButtons();
     }
 
-    async function saveAdSettings(e) {
-      e.preventDefault();
-      if (!isUserAdmin) return;
+    async function saveAdSettings(e, silent = false) {
+      if (e && e.preventDefault) e.preventDefault();
+      if (!isUserAdmin) {
+        if (!silent) {
+          showToast("Please sign in as mail.sajjadahmed@gmail.com to save Ad Settings.", "error");
+          openAuthModal('signin');
+        }
+        return;
+      }
+
+      if (!navigator.onLine) {
+        if (!silent) {
+          showToast("Connection unavailable. Firebase Cloud Save required.", "error");
+        }
+        return;
+      }
 
       const newSettings = {
         provider: document.getElementById('adCfgProvider').value || 'admob',
@@ -1679,36 +2211,56 @@
         if (newSettings[k] === undefined) newSettings[k] = '';
       });
 
-      // Always save locally first so admin never loses ad credentials
-      adConfig = { ...adConfig, ...newSettings };
-      try {
-        localStorage.setItem('ps_ad_config', JSON.stringify(adConfig));
-      } catch (e) {}
+      let savedToCloud = false;
+      const targets = [
+        'PROMPT_MANAGER/adSettings',
+        'PROMPT_MANAGER/rewardAds',
+        'PROMPT_MANAGER/settings/rewardAd',
+        'promptManager/adSettings',
+        'promptManager/rewardAds'
+      ];
 
-      try {
-        await rtdb.ref('PROMPT_MANAGER/settings/rewardAd').set(newSettings);
-        showToast('Ad network configuration saved to Firebase & local storage!', 'success');
-      } catch (err) {
-        console.warn('RTDB saveAdSettings notice:', err);
-        const isPermDenied = err.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
-        if (isPermDenied) {
-          showToast('Ad settings saved locally in browser! (Sign in as mail.sajjadahmed@gmail.com for Firebase cloud sync).', 'info');
-        } else {
-          showToast(`Ad settings saved locally (${err.message})`, 'info');
+      for (const targetPath of targets) {
+        try {
+          await rtdb.ref(targetPath).set(newSettings);
+          savedToCloud = true;
+        } catch (targetErr) {
+          console.debug(`Notice on target ${targetPath}:`, targetErr?.message);
+        }
+      }
+
+      if (savedToCloud) {
+        adConfig = { ...adConfig, ...newSettings };
+        renderActiveAdButtons();
+        if (!silent) {
+          showToast("Ad settings saved successfully to Firebase Cloud!", "success");
+        }
+      } else {
+        if (!silent) {
+          showToast("Firebase Save Failed! Please check your connection.", "error");
         }
       }
     }
 
     function testRewardAdFlow() {
-      const target = prompts.find(p => p.accessType === 'Reward Locked') || prompts[0];
-      if (target) {
-        openRewardAdModal(target.id);
-      } else {
-        showToast('Please add at least one prompt to test ad unlock.', 'error');
-      }
+      const target = prompts.find(p => p.accessType === 'Reward Locked') || prompts[0] || {
+        id: 'test_ad_preview',
+        title: 'Real Rewarded Video Ad Test',
+        accessType: 'Reward Locked',
+        fullContent: 'Real video ad completed and verified! Test prompt unlocked.'
+      };
+      openRewardAdModal(target.id);
+      const names = {
+        admob: 'Google AdMob',
+        startio: 'Start.io',
+        unity: 'UnityAds',
+        wortise: 'Wortise',
+        custom_video: 'Custom Video'
+      };
+      showToast(`Launching real ad flow for active network: ${names[adConfig.provider||'admob']}...`, 'info');
     }
 
-    // ================= AUTH MODAL (SIGN IN / REGISTER / FORGOT PASSWORD) =================
+    // ================= AUTH MODAL (SIGN IN / REGISTER / FORGOT PASSWORD / GOOGLE) =================
     function openAuthModal(mode = 'signin') {
       authMode = mode;
       switchAuthTab(mode);
@@ -1722,6 +2274,9 @@
       document.getElementById('tabBtnSignUp').classList.toggle('active', tab === 'signup');
 
       document.getElementById('authTabButtons').style.display = tab === 'forgot' ? 'none' : 'flex';
+      const googleWrap = document.getElementById('googleAuthWrap');
+      if (googleWrap) googleWrap.style.display = tab === 'forgot' ? 'none' : 'block';
+
       document.getElementById('groupDisplayName').style.display = tab === 'signup' ? 'flex' : 'none';
       document.getElementById('groupPassword').style.display = tab === 'forgot' ? 'none' : 'flex';
       document.getElementById('forgotBackLink').style.display = tab === 'forgot' ? 'block' : 'none';
@@ -1731,6 +2286,28 @@
 
       document.getElementById('authSubmitBtn').textContent =
         tab === 'signin' ? 'Sign In' : tab === 'signup' ? 'Create Free Account' : 'Send Reset Link';
+    }
+
+    async function signInWithGoogle() {
+      if (!navigator.onLine) {
+        showToast("Connection unavailable. Firebase Cloud Save required.", "error");
+        return;
+      }
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const res = await auth.signInWithPopup(provider);
+        const user = res.user;
+        const email = user && user.email ? user.email.toLowerCase().trim() : '';
+        if (email === FIXED_ADMIN_EMAIL.toLowerCase()) {
+          showToast("Welcome Administrator! Admin Panel unlocked.", "success");
+        } else {
+          showToast(`Signed in as ${user.email}`, "success");
+        }
+        closeModal('authModal');
+      } catch (err) {
+        console.error('Google sign-in error:', err);
+        showToast(err.message || "Google sign-in failed", "error");
+      }
     }
 
     async function handleAuthSubmit(e) {

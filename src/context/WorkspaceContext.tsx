@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { PromptItem, PromptCategory, WorkspaceMode, AdminSection, RewardAdConfig, UserProfile } from '../types';
 import { INITIAL_PROMPTS, INITIAL_CATEGORIES, DEFAULT_AD_CONFIG } from '../data/seedData';
-import { auth, rtdb, FIXED_ADMIN_EMAIL, isAdminUser } from '../services/firebase';
+import { auth, rtdb, FIXED_ADMIN_EMAIL, FIXED_ADMIN_UID, isAdminUser } from '../services/firebase';
 import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
 import { ref, onValue, set, update as rtdbUpdate } from 'firebase/database';
 
@@ -39,14 +39,14 @@ interface WorkspaceContextType {
   updateCategory: (id: string, updates: Partial<PromptCategory>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   
-  // Favorites
+  // Favorites (In-memory + Firebase sync, NO local storage)
   favoritePromptIds: string[];
   toggleFavorite: (promptId: string) => void;
   isFavorite: (promptId: string) => boolean;
 
-  // Reward Ad & Unlocks
+  // Reward Ad & Unlocks (In-memory + Firebase sync, NO local storage)
   adConfig: RewardAdConfig;
-  updateAdConfig: (updates: Partial<RewardAdConfig>) => Promise<void>;
+  updateAdConfig: (updates: Partial<RewardAdConfig>, silent?: boolean) => Promise<void>;
   activeRewardPrompt: PromptItem | null;
   setActiveRewardPrompt: (prompt: PromptItem | null) => void;
   unlockedPromptIds: string[];
@@ -68,10 +68,6 @@ interface WorkspaceContextType {
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
-
-const STORAGE_FAVORITES_KEY = 'prompt_manager_favorites_v4';
-const STORAGE_UNLOCKS_KEY = 'prompt_manager_unlocks_v4';
-const STORAGE_AD_CONFIG_KEY = 'prompt_manager_ad_config_v4';
 
 // Helper to sanitize any payload before writing to Firebase RTDB (prevents "undefined property" crashes)
 export function sanitizeForFirebase<T>(val: T): T {
@@ -100,12 +96,12 @@ export function sanitizeForFirebase<T>(val: T): T {
 }
 
 export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // All prompts & categories loaded strictly from Firebase Realtime Database (no hardcoded seed default)
+  // All prompts & categories loaded strictly from Firebase Realtime Database
   const [prompts, setPrompts] = useState<PromptItem[]>([]);
   const [categories, setCategories] = useState<PromptCategory[]>([]);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
-  // App MUST always open first in Viewer mode ("fast open viwer mode thakbe")
+  // App MUST always open first in Viewer mode
   const [workspaceMode, setWorkspaceModeState] = useState<WorkspaceMode>('viewer');
 
   // Admin section
@@ -113,39 +109,15 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [selectedPromptForEdit, setSelectedPromptForEdit] = useState<PromptItem | null>(null);
   const [activePromptDetail, setActivePromptDetail] = useState<PromptItem | null>(null);
 
-  // Favorites
-  const [favoritePromptIds, setFavoritePromptIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_FAVORITES_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return [];
-  });
+  // Favorites (In-memory, synced to RTDB promptManager/users/${uid}/favorites)
+  const [favoritePromptIds, setFavoritePromptIds] = useState<string[]>([]);
 
-  // Reward Ad Configuration (with local persistence fallback)
-  const [adConfig, setAdConfig] = useState<RewardAdConfig>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_AD_CONFIG_KEY);
-      if (saved) return { ...DEFAULT_AD_CONFIG, ...JSON.parse(saved) };
-    } catch (e) {
-      console.error(e);
-    }
-    return DEFAULT_AD_CONFIG;
-  });
+  // Reward Ad Configuration (Strictly from Firebase Realtime Database)
+  const [adConfig, setAdConfig] = useState<RewardAdConfig>(DEFAULT_AD_CONFIG);
   const [activeRewardPrompt, setActiveRewardPrompt] = useState<PromptItem | null>(null);
 
-  // Unlocked prompt IDs (via reward ads)
-  const [unlockedPromptIds, setUnlockedPromptIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_UNLOCKS_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return [];
-  });
+  // Unlocked prompt IDs (via reward ads - session in-memory only)
+  const [unlockedPromptIds, setUnlockedPromptIds] = useState<string[]>([]);
 
   // Auth state
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -155,7 +127,7 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   // Toasts
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // Strict Admin Check: ONLY fixed email 'mail.sajjadahmed@gmail.com' is admin
+  // Strict Admin Check: Email 'mail.sajjadahmed@gmail.com' or fixed UID
   const isUserAdmin = Boolean(currentUser && isAdminUser(currentUser));
 
   // If user is not admin, guarantee workspaceMode is locked to 'viewer'
@@ -164,110 +136,6 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       setWorkspaceModeState('viewer');
     }
   }, [isUserAdmin, workspaceMode]);
-
-  // Firebase Auth State Listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      if (user) {
-        // Fetch user favorites from RTDB
-        try {
-          const favRef = ref(rtdb, `PROMPT_MANAGER/users/${user.uid}/favorites`);
-          onValue(favRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data && Array.isArray(data)) {
-              setFavoritePromptIds(data);
-            }
-          });
-        } catch (err) {
-          console.debug('Favorites sync note:', err);
-        }
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Firebase Realtime Database Listener for Prompts
-  useEffect(() => {
-    setIsLoadingData(true);
-    const promptsRef = ref(rtdb, 'PROMPT_MANAGER/prompts_public');
-    const unsubscribe = onValue(
-      promptsRef,
-      (snapshot) => {
-        const data = snapshot.val();
-        if (data && typeof data === 'object') {
-          const list = Object.values(data) as PromptItem[];
-          setPrompts(list);
-        } else {
-          setPrompts([]);
-        }
-        setIsLoadingData(false);
-      },
-      (error) => {
-        console.error('Firebase prompts error:', error);
-        setIsLoadingData(false);
-      }
-    );
-    return () => unsubscribe();
-  }, []);
-
-  // Firebase Realtime Database Listener for Categories
-  useEffect(() => {
-    const catsRef = ref(rtdb, 'PROMPT_MANAGER/categories');
-    const unsubscribe = onValue(
-      catsRef,
-      (snapshot) => {
-        const data = snapshot.val();
-        if (data && typeof data === 'object') {
-          const list = Object.values(data) as PromptCategory[];
-          setCategories(list);
-        } else {
-          setCategories([]);
-        }
-      },
-      (error) => {
-        console.error('Firebase categories error:', error);
-      }
-    );
-    return () => unsubscribe();
-  }, []);
-
-  // Firebase Realtime Database Listener for Ad Settings
-  useEffect(() => {
-    const settingsRef = ref(rtdb, 'PROMPT_MANAGER/settings/rewardAd');
-    const unsubscribe = onValue(settingsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === 'object') {
-        setAdConfig((prev) => ({ ...prev, ...data }));
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Persist favorites & unlocks locally
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_FAVORITES_KEY, JSON.stringify(favoritePromptIds));
-      if (currentUser) {
-        set(ref(rtdb, `PROMPT_MANAGER/users/${currentUser.uid}/favorites`), favoritePromptIds).catch(() => {});
-      }
-    } catch (e) {}
-  }, [favoritePromptIds, currentUser]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_UNLOCKS_KEY, JSON.stringify(unlockedPromptIds));
-    } catch (e) {}
-  }, [unlockedPromptIds]);
-
-  const setWorkspaceMode = (mode: WorkspaceMode) => {
-    if (!isUserAdmin && mode !== 'viewer') {
-      showToast('Admin Panel is restricted to authorized administrator.', 'error');
-      setWorkspaceModeState('viewer');
-      return;
-    }
-    setWorkspaceModeState(mode);
-  };
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info') => {
     const id = 'toast_' + Date.now() + Math.random().toString(36).substring(2, 6);
@@ -281,8 +149,117 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  // Firebase Auth State Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (user) {
+        // Sync favorites from RTDB
+        const onFavs = (snapshot: any) => {
+          const data = snapshot.val();
+          if (data && Array.isArray(data)) {
+            setFavoritePromptIds(data);
+          }
+        };
+        try {
+          onValue(ref(rtdb, `PROMPT_MANAGER/users/${user.uid}/favorites`), onFavs);
+          onValue(ref(rtdb, `promptManager/users/${user.uid}/favorites`), onFavs, () => {});
+        } catch (err) {
+          console.debug('Favorites sync note:', err);
+        }
+      } else {
+        setFavoritePromptIds([]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Firebase Realtime Database Listener for Prompts
+  useEffect(() => {
+    setIsLoadingData(true);
+    const onPrompts = (snapshot: any) => {
+      const data = snapshot.val();
+      if (data && typeof data === 'object') {
+        setPrompts(Object.values(data) as PromptItem[]);
+        setIsLoadingData(false);
+      }
+    };
+
+    const unsubLegacy = onValue(ref(rtdb, 'PROMPT_MANAGER/prompts_public'), onPrompts);
+    const unsubLegacy2 = onValue(ref(rtdb, 'PROMPT_MANAGER/prompts'), onPrompts);
+    let unsubPrimary: (() => void) | undefined;
+    try {
+      unsubPrimary = onValue(ref(rtdb, 'promptManager/prompts'), onPrompts, () => {});
+    } catch (e) {}
+
+    return () => {
+      unsubLegacy();
+      unsubLegacy2();
+      if (unsubPrimary) unsubPrimary();
+    };
+  }, []);
+
+  // Firebase Realtime Database Listener for Categories
+  useEffect(() => {
+    const onCategories = (snapshot: any) => {
+      const data = snapshot.val();
+      if (data && typeof data === 'object') {
+        setCategories(Object.values(data) as PromptCategory[]);
+      }
+    };
+
+    const unsubLegacy = onValue(ref(rtdb, 'PROMPT_MANAGER/categories'), onCategories);
+    let unsubPrimary: (() => void) | undefined;
+    try {
+      unsubPrimary = onValue(ref(rtdb, 'promptManager/categories'), onCategories, () => {});
+    } catch (e) {}
+
+    return () => {
+      unsubLegacy();
+      if (unsubPrimary) unsubPrimary();
+    };
+  }, []);
+
+  // Firebase Realtime Database Listener for Ad Settings
+  useEffect(() => {
+    const onAdData = (snapshot: any) => {
+      const data = snapshot.val();
+      if (data && typeof data === 'object') {
+        setAdConfig((prev) => ({ ...prev, ...data }));
+      }
+    };
+
+    const unsubAd = onValue(ref(rtdb, 'PROMPT_MANAGER/adSettings'), onAdData);
+    const unsubReward = onValue(ref(rtdb, 'PROMPT_MANAGER/settings/rewardAd'), onAdData);
+    let unsubPrimary: (() => void) | undefined;
+    try {
+      unsubPrimary = onValue(ref(rtdb, 'promptManager/adSettings'), onAdData, () => {});
+    } catch (e) {}
+
+    return () => {
+      unsubAd();
+      unsubReward();
+      if (unsubPrimary) unsubPrimary();
+    };
+  }, []);
+
+  // Mode switcher
+  const setWorkspaceMode = (mode: WorkspaceMode) => {
+    if (!isUserAdmin && mode !== 'viewer') {
+      showToast('Admin Panel is restricted to authorized administrator.', 'error');
+      setWorkspaceModeState('viewer');
+      return;
+    }
+    setWorkspaceModeState(mode);
+  };
+
   // Add Prompt directly to Firebase Realtime Database
   const addPrompt = async (promptData: Omit<PromptItem, 'id' | 'createdAt' | 'updatedAt' | 'views' | 'copies'>): Promise<PromptItem> => {
+    if (!navigator.onLine) {
+      showToast('Connection unavailable. Firebase Cloud Save required.', 'error');
+      throw new Error('Connection unavailable. Firebase Cloud Save required.');
+    }
+
     const newId = 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
     const newPrompt: PromptItem = {
       ...promptData,
@@ -298,26 +275,38 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
     const sanitized = sanitizeForFirebase(newPrompt);
 
-    // Keep UI responsive immediately
-    setPrompts((prev) => [newPrompt, ...prev.filter((p) => p.id !== newId)]);
-
-    try {
-      await set(ref(rtdb, `PROMPT_MANAGER/prompts_public/${newId}`), sanitized);
-      showToast(`Prompt "${newPrompt.title}" saved to Firebase!`, 'success');
-    } catch (err: any) {
-      console.warn('Firebase addPrompt notice:', err);
-      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
-      if (isPermDenied) {
-        showToast('Prompt created locally. Sign in with mail.sajjadahmed@gmail.com for Firebase cloud sync.', 'info');
-      } else {
-        showToast(`Firebase write note: ${err.message}`, 'error');
+    let saved = false;
+    const targets = [
+      `PROMPT_MANAGER/prompts_public/${newId}`,
+      `PROMPT_MANAGER/prompts/${newId}`,
+      `promptManager/prompts/${newId}`,
+    ];
+    for (const t of targets) {
+      try {
+        await set(ref(rtdb, t), sanitized);
+        saved = true;
+      } catch (err: any) {
+        console.debug(`Notice on ${t}:`, err?.message);
       }
     }
-    return newPrompt;
+
+    if (saved) {
+      setPrompts((prev) => [newPrompt, ...prev.filter((p) => p.id !== newId)]);
+      showToast('Settings saved successfully to Firebase Cloud!', 'success');
+      return newPrompt;
+    } else {
+      showToast('Firebase Save Failed! Please check your connection.', 'error');
+      throw new Error('Firebase Save Failed! Please check your connection.');
+    }
   };
 
   // Update Prompt directly in Firebase Realtime Database
   const updatePrompt = async (id: string, updates: Partial<PromptItem>) => {
+    if (!navigator.onLine) {
+      showToast('Connection unavailable. Firebase Cloud Save required.', 'error');
+      return;
+    }
+
     const current = prompts.find((p) => p.id === id);
     if (!current) return;
     const updated: PromptItem = {
@@ -331,60 +320,90 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
     const sanitized = sanitizeForFirebase(updated);
 
-    // Update in-memory state immediately so UI always updates cleanly
-    setPrompts((prev) => prev.map((p) => (p.id === id ? updated : p)));
-
-    try {
-      await set(ref(rtdb, `PROMPT_MANAGER/prompts_public/${id}`), sanitized);
-      showToast('Prompt updated in Firebase!', 'success');
-    } catch (err: any) {
-      console.warn('Firebase updatePrompt notice:', err);
-      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
-      if (isPermDenied) {
-        showToast('Prompt updated locally. Sign in with mail.sajjadahmed@gmail.com for Firebase cloud sync.', 'info');
-      } else {
-        showToast(`Firebase update note: ${err.message}`, 'error');
+    let saved = false;
+    const targets = [
+      `PROMPT_MANAGER/prompts_public/${id}`,
+      `PROMPT_MANAGER/prompts/${id}`,
+      `promptManager/prompts/${id}`,
+    ];
+    for (const t of targets) {
+      try {
+        await set(ref(rtdb, t), sanitized);
+        saved = true;
+      } catch (err: any) {
+        console.debug(`Notice on ${t}:`, err?.message);
       }
+    }
+
+    if (saved) {
+      setPrompts((prev) => prev.map((p) => (p.id === id ? updated : p)));
+      showToast('Settings saved successfully to Firebase Cloud!', 'success');
+    } else {
+      showToast('Firebase Save Failed! Please check your connection.', 'error');
     }
   };
 
   // Delete Prompt from Firebase Realtime Database
   const deletePrompt = async (id: string) => {
-    setPrompts((prev) => prev.filter((p) => p.id !== id));
-    try {
-      await set(ref(rtdb, `PROMPT_MANAGER/prompts_public/${id}`), null);
-      showToast('Prompt deleted from Firebase.', 'info');
-    } catch (err: any) {
-      console.warn('Firebase deletePrompt notice:', err);
-      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
-      if (isPermDenied) {
-        showToast('Prompt removed locally. Sign in with mail.sajjadahmed@gmail.com for cloud sync.', 'info');
-      } else {
-        showToast(`Delete note: ${err.message}`, 'error');
+    if (!navigator.onLine) {
+      showToast('Connection unavailable. Firebase Cloud Save required.', 'error');
+      return;
+    }
+
+    const targets = [
+      `PROMPT_MANAGER/prompts_public/${id}`,
+      `PROMPT_MANAGER/prompts/${id}`,
+      `promptManager/prompts/${id}`,
+    ];
+    let deleted = false;
+    for (const t of targets) {
+      try {
+        await set(ref(rtdb, t), null);
+        deleted = true;
+      } catch (err: any) {
+        console.debug(`Notice on ${t}:`, err?.message);
       }
+    }
+
+    if (deleted) {
+      setPrompts((prev) => prev.filter((p) => p.id !== id));
+      showToast('Settings saved successfully to Firebase Cloud!', 'success');
+    } else {
+      showToast('Firebase Save Failed! Please check your connection.', 'error');
     }
   };
 
   // Toggle Publish in Firebase Realtime Database
   const togglePublish = async (id: string) => {
+    if (!navigator.onLine) {
+      showToast('Connection unavailable. Firebase Cloud Save required.', 'error');
+      return;
+    }
+
     const p = prompts.find((x) => x.id === id);
     if (!p) return;
     const next = !p.published;
-    setPrompts((prev) => prev.map((item) => (item.id === id ? { ...item, published: next } : item)));
-    try {
-      await rtdbUpdate(ref(rtdb, `PROMPT_MANAGER/prompts_public/${id}`), {
-        published: next,
-        updatedAt: Date.now(),
-      });
-      showToast(next ? 'Prompt published to Viewer.' : 'Prompt unpublished (draft).', 'info');
-    } catch (err: any) {
-      console.warn('Firebase togglePublish notice:', err);
-      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
-      if (isPermDenied) {
-        showToast('Status updated locally. Sign in with mail.sajjadahmed@gmail.com for cloud sync.', 'info');
-      } else {
-        showToast(`Publish update note: ${err.message}`, 'error');
+
+    const targets = [
+      `PROMPT_MANAGER/prompts_public/${id}`,
+      `PROMPT_MANAGER/prompts/${id}`,
+      `promptManager/prompts/${id}`,
+    ];
+    let updated = false;
+    for (const t of targets) {
+      try {
+        await rtdbUpdate(ref(rtdb, t), { published: next, updatedAt: Date.now() });
+        updated = true;
+      } catch (err: any) {
+        console.debug(`Notice on ${t}:`, err?.message);
       }
+    }
+
+    if (updated) {
+      setPrompts((prev) => prev.map((item) => (item.id === id ? { ...item, published: next } : item)));
+      showToast('Settings saved successfully to Firebase Cloud!', 'success');
+    } else {
+      showToast('Firebase Save Failed! Please check your connection.', 'error');
     }
   };
 
@@ -416,80 +435,125 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
         updates['lastViewedAt'] = now;
       }
       rtdbUpdate(ref(rtdb, `PROMPT_MANAGER/prompts_public/${id}`), sanitizeForFirebase(updates)).catch(() => {});
+      rtdbUpdate(ref(rtdb, `PROMPT_MANAGER/prompts/${id}`), sanitizeForFirebase(updates)).catch(() => {});
+      rtdbUpdate(ref(rtdb, `promptManager/prompts/${id}`), sanitizeForFirebase(updates)).catch(() => {});
     } catch (e) {}
   };
 
   // Category CRUD
   const addCategory = async (categoryData: Omit<PromptCategory, 'id'>): Promise<PromptCategory> => {
+    if (!navigator.onLine) {
+      showToast('Connection unavailable. Firebase Cloud Save required.', 'error');
+      throw new Error('Connection unavailable. Firebase Cloud Save required.');
+    }
+
     const id = 'cat_' + Date.now().toString(36);
     const newCat: PromptCategory = {
       ...categoryData,
       id,
     };
     const sanitized = sanitizeForFirebase(newCat);
-    setCategories((prev) => [...prev, newCat]);
-    try {
-      await set(ref(rtdb, `PROMPT_MANAGER/categories/${id}`), sanitized);
-      showToast(`Category "${newCat.name}" saved to Firebase!`, 'success');
-    } catch (err: any) {
-      console.warn('Firebase addCategory notice:', err);
-      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
-      if (isPermDenied) {
-        showToast('Category created locally. Sign in with mail.sajjadahmed@gmail.com for cloud sync.', 'info');
-      } else {
-        showToast(`Category save note: ${err.message}`, 'error');
+
+    let saved = false;
+    const targets = [
+      `PROMPT_MANAGER/categories/${id}`,
+      `promptManager/categories/${id}`,
+    ];
+    for (const t of targets) {
+      try {
+        await set(ref(rtdb, t), sanitized);
+        saved = true;
+      } catch (err: any) {
+        console.debug(`Notice on ${t}:`, err?.message);
       }
     }
-    return newCat;
+
+    if (saved) {
+      setCategories((prev) => [...prev, newCat]);
+      showToast('Settings saved successfully to Firebase Cloud!', 'success');
+      return newCat;
+    } else {
+      showToast('Firebase Save Failed! Please check your connection.', 'error');
+      throw new Error('Firebase Save Failed! Please check your connection.');
+    }
   };
 
   const updateCategory = async (id: string, updates: Partial<PromptCategory>) => {
+    if (!navigator.onLine) {
+      showToast('Connection unavailable. Firebase Cloud Save required.', 'error');
+      return;
+    }
+
     const c = categories.find((item) => item.id === id);
     if (!c) return;
     const updated = { ...c, ...updates };
     const sanitized = sanitizeForFirebase(updated);
-    setCategories((prev) => prev.map((item) => (item.id === id ? updated : item)));
-    try {
-      await set(ref(rtdb, `PROMPT_MANAGER/categories/${id}`), sanitized);
-      showToast('Category updated in Firebase.', 'success');
-    } catch (err: any) {
-      console.warn('Firebase updateCategory notice:', err);
-      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
-      if (isPermDenied) {
-        showToast('Category updated locally. Sign in with mail.sajjadahmed@gmail.com for cloud sync.', 'info');
-      } else {
-        showToast(`Category update note: ${err.message}`, 'error');
+
+    let saved = false;
+    const targets = [
+      `PROMPT_MANAGER/categories/${id}`,
+      `promptManager/categories/${id}`,
+    ];
+    for (const t of targets) {
+      try {
+        await set(ref(rtdb, t), sanitized);
+        saved = true;
+      } catch (err: any) {
+        console.debug(`Notice on ${t}:`, err?.message);
       }
+    }
+
+    if (saved) {
+      setCategories((prev) => prev.map((item) => (item.id === id ? updated : item)));
+      showToast('Settings saved successfully to Firebase Cloud!', 'success');
+    } else {
+      showToast('Firebase Save Failed! Please check your connection.', 'error');
     }
   };
 
   const deleteCategory = async (id: string) => {
-    setCategories((prev) => prev.filter((item) => item.id !== id));
-    try {
-      await set(ref(rtdb, `PROMPT_MANAGER/categories/${id}`), null);
-      showToast('Category deleted from Firebase.', 'info');
-    } catch (err: any) {
-      console.warn('Firebase deleteCategory notice:', err);
-      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
-      if (isPermDenied) {
-        showToast('Category deleted locally. Sign in with mail.sajjadahmed@gmail.com for cloud sync.', 'info');
-      } else {
-        showToast(`Category delete note: ${err.message}`, 'error');
+    if (!navigator.onLine) {
+      showToast('Connection unavailable. Firebase Cloud Save required.', 'error');
+      return;
+    }
+
+    const targets = [
+      `PROMPT_MANAGER/categories/${id}`,
+      `promptManager/categories/${id}`,
+    ];
+    let deleted = false;
+    for (const t of targets) {
+      try {
+        await set(ref(rtdb, t), null);
+        deleted = true;
+      } catch (err: any) {
+        console.debug(`Notice on ${t}:`, err?.message);
       }
+    }
+
+    if (deleted) {
+      setCategories((prev) => prev.filter((item) => item.id !== id));
+      showToast('Settings saved successfully to Firebase Cloud!', 'success');
+    } else {
+      showToast('Firebase Save Failed! Please check your connection.', 'error');
     }
   };
 
-  // Favorites
+  // Favorites (In-memory + Firebase sync if authenticated, NO local storage)
   const toggleFavorite = (promptId: string) => {
     setFavoritePromptIds((prev) => {
       const exists = prev.includes(promptId);
+      const updated = exists ? prev.filter((id) => id !== promptId) : [...prev, promptId];
       if (exists) {
         showToast('Removed from favorites', 'info');
-        return prev.filter((id) => id !== promptId);
       } else {
         showToast('Saved to your favorites ⭐', 'success');
-        return [...prev, promptId];
       }
+      if (currentUser) {
+        set(ref(rtdb, `PROMPT_MANAGER/users/${currentUser.uid}/favorites`), updated).catch(() => {});
+        set(ref(rtdb, `promptManager/users/${currentUser.uid}/favorites`), updated).catch(() => {});
+      }
+      return updated;
     });
   };
 
@@ -497,31 +561,52 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     return favoritePromptIds.includes(promptId);
   };
 
-  // Ad Settings
-  const updateAdConfig = async (updates: Partial<RewardAdConfig>) => {
-    const updated = { ...adConfig, ...updates };
-    setAdConfig(updated);
-    try {
-      localStorage.setItem(STORAGE_AD_CONFIG_KEY, JSON.stringify(updated));
-    } catch (e) {
-      console.warn('LocalStorage adConfig error:', e);
+  // Ad Settings (Saves to both PROMPT_MANAGER and promptManager)
+  const updateAdConfig = async (updates: Partial<RewardAdConfig>, silent = false) => {
+    if (!isUserAdmin) {
+      if (!silent) {
+        showToast('Please sign in as mail.sajjadahmed@gmail.com to save Ad Settings.', 'error');
+        setAuthModalOpen(true);
+      }
+      return;
     }
 
+    if (!navigator.onLine) {
+      if (!silent) {
+        showToast('Connection unavailable. Firebase Cloud Save required.', 'error');
+      }
+      return;
+    }
+
+    const updated = { ...adConfig, ...updates };
     const sanitized = sanitizeForFirebase(updated);
-    try {
-      await set(ref(rtdb, 'PROMPT_MANAGER/settings/rewardAd'), sanitized);
-      showToast('Ad network settings saved to Firebase!', 'success');
-    } catch (err: any) {
-      console.warn('Firebase updateAdConfig notice:', err);
-      const isPermDenied = err?.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('Permission denied'));
-      if (isPermDenied) {
-        if (!isUserAdmin) {
-          showToast('Ad settings saved locally in browser! Sign in with mail.sajjadahmed@gmail.com for Firebase cloud sync.', 'info');
-        } else {
-          showToast('Ad settings saved locally in browser! (Firebase RTDB rules restricted direct cloud write).', 'info');
-        }
-      } else {
-        showToast(`Ad settings saved locally (${err?.message || 'offline'})`, 'info');
+
+    let savedToCloud = false;
+    const targets = [
+      'PROMPT_MANAGER/adSettings',
+      'PROMPT_MANAGER/rewardAds',
+      'PROMPT_MANAGER/settings/rewardAd',
+      'promptManager/adSettings',
+      'promptManager/rewardAds',
+    ];
+
+    for (const target of targets) {
+      try {
+        await set(ref(rtdb, target), sanitized);
+        savedToCloud = true;
+      } catch (err: any) {
+        console.debug(`Notice on target ${target}:`, err?.message);
+      }
+    }
+
+    if (savedToCloud) {
+      setAdConfig(updated);
+      if (!silent) {
+        showToast('Ad settings saved successfully to Firebase Cloud!', 'success');
+      }
+    } else {
+      if (!silent) {
+        showToast('Firebase Save Failed! Please check your connection.', 'error');
       }
     }
   };
@@ -555,19 +640,31 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       showToast('Only administrator can populate database.', 'error');
       return;
     }
+    if (!navigator.onLine) {
+      showToast('Connection unavailable. Firebase Cloud Save required.', 'error');
+      return;
+    }
     try {
       const updates: Record<string, any> = {};
       INITIAL_CATEGORIES.forEach((c) => {
         updates[`PROMPT_MANAGER/categories/${c.id}`] = c;
+        updates[`promptManager/categories/${c.id}`] = c;
       });
       INITIAL_PROMPTS.forEach((p) => {
         updates[`PROMPT_MANAGER/prompts_public/${p.id}`] = p;
+        updates[`PROMPT_MANAGER/prompts/${p.id}`] = p;
+        updates[`promptManager/prompts/${p.id}`] = p;
       });
-      updates[`PROMPT_MANAGER/settings/rewardAd`] = DEFAULT_AD_CONFIG;
+      updates[`PROMPT_MANAGER/adSettings`] = DEFAULT_AD_CONFIG;
+      updates[`PROMPT_MANAGER/rewardAds`] = DEFAULT_AD_CONFIG;
+      updates[`promptManager/adSettings`] = DEFAULT_AD_CONFIG;
+      updates[`promptManager/rewardAds`] = DEFAULT_AD_CONFIG;
+
       await rtdbUpdate(ref(rtdb), updates);
-      showToast('Successfully initialized database in Firebase Realtime Database!', 'success');
+      showToast('Settings saved successfully to Firebase Cloud!', 'success');
     } catch (err: any) {
-      showToast(`Initialization failed: ${err.message}`, 'error');
+      console.error('Initialization error:', err);
+      showToast('Firebase Save Failed! Please check your connection.', 'error');
     }
   };
 
