@@ -11,7 +11,6 @@ import {
   TrendingUp,
   Star,
   Lock,
-  Unlock,
   Play,
 } from 'lucide-react';
 
@@ -33,6 +32,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({ prompt, viewMode, onView
     toggleFavorite,
     isPromptUnlocked,
     setActiveRewardPrompt,
+    isUserAdmin,
   } = useWorkspace();
 
   const [copied, setCopied] = useState(false);
@@ -73,6 +73,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({ prompt, viewMode, onView
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isUserAdmin) return;
     setSelectedPromptForEdit(prompt);
     setAdminSection('new-prompt');
     setWorkspaceMode('admin');
@@ -209,17 +210,29 @@ export const PromptCard: React.FC<PromptCardProps> = ({ prompt, viewMode, onView
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onViewDetail(prompt);
-            }}
-            className="w-full sm:w-28 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span>View</span>
-          </button>
+          <div className="flex items-center gap-1 w-full sm:w-28">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewDetail(prompt);
+              }}
+              className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>View</span>
+            </button>
+            {isUserAdmin && (
+              <button
+                type="button"
+                onClick={handleEdit}
+                title="Edit in Admin"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
+              </button>
+            )}
+          </div>
         </div>
       </article>
     );
@@ -291,14 +304,16 @@ export const PromptCard: React.FC<PromptCardProps> = ({ prompt, viewMode, onView
                 }`}
               />
             </button>
-            <button
-              type="button"
-              onClick={handleEdit}
-              title="Edit in Admin"
-              className="p-1.5 rounded-md bg-slate-950/80 hover:bg-indigo-600 text-slate-400 hover:text-white backdrop-blur-xs transition-colors"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
+            {isUserAdmin && (
+              <button
+                type="button"
+                onClick={handleEdit}
+                title="Edit in Admin"
+                className="p-1.5 rounded-md bg-slate-950/80 hover:bg-indigo-600 text-slate-400 hover:text-white backdrop-blur-xs transition-colors"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>

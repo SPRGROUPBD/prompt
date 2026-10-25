@@ -16,7 +16,6 @@ import {
   Star,
   Lock,
   Play,
-  CheckCircle2,
 } from 'lucide-react';
 
 interface PromptDetailModalProps {
@@ -36,6 +35,7 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({ prompt, on
     toggleFavorite,
     isPromptUnlocked,
     setActiveRewardPrompt,
+    isUserAdmin,
   } = useWorkspace();
   const [copied, setCopied] = useState(false);
 
@@ -83,6 +83,7 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({ prompt, on
   };
 
   const handleEditInAdmin = () => {
+    if (!isUserAdmin) return;
     setSelectedPromptForEdit(prompt);
     setAdminSection('new-prompt');
     setWorkspaceMode('admin');
@@ -300,15 +301,17 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({ prompt, on
               <Share2 className="w-3.5 h-3.5" />
               <span>Share</span>
             </button>
-            <button
-              type="button"
-              onClick={handleEditInAdmin}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
-              title="Open this prompt directly in Admin Studio"
-            >
-              <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Edit in Admin</span>
-            </button>
+            {isUserAdmin && (
+              <button
+                type="button"
+                onClick={handleEditInAdmin}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                title="Open this prompt directly in Admin Studio"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Edit in Admin</span>
+              </button>
+            )}
           </div>
 
           {isRewardLocked ? (

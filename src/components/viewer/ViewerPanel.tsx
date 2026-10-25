@@ -16,12 +16,14 @@ import {
   Layers,
   Plus,
   Star,
+  RefreshCw,
 } from 'lucide-react';
 
 export const ViewerPanel: React.FC = () => {
   const {
     prompts,
     categories,
+    isLoadingData,
     activePromptDetail,
     setActivePromptDetail,
     setWorkspaceMode,
@@ -29,6 +31,8 @@ export const ViewerPanel: React.FC = () => {
     setSelectedPromptForEdit,
     favoritePromptIds,
     isFavorite,
+    isUserAdmin,
+    initializeFirebaseDefaults,
   } = useWorkspace();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,6 +101,7 @@ export const ViewerPanel: React.FC = () => {
   };
 
   const handleCreatePrompt = () => {
+    if (!isUserAdmin) return;
     setSelectedPromptForEdit(null);
     setAdminSection('new-prompt');
     setWorkspaceMode('admin');
@@ -105,14 +110,14 @@ export const ViewerPanel: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-slate-950 text-slate-100 pb-16">
       {/* Hero Section */}
-      <section className="relative px-4 sm:px-6 py-10 sm:py-12 bg-gradient-to-b from-slate-900 to-slate-950 border-b border-slate-800/80">
-        <div className="max-w-6xl mx-auto space-y-6">
+      <section className="relative px-4 sm:px-6 py-8 sm:py-12 bg-gradient-to-b from-slate-900 to-slate-950 border-b border-slate-800/80">
+        <div className="max-w-6xl mx-auto space-y-5">
           <div className="space-y-2 max-w-2xl">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight">
               Curated High-Impact AI Prompts
             </h1>
-            <p className="text-sm sm:text-base text-slate-400 leading-relaxed">
-              Tested templates for image generation, cinematic video, full-stack architecture, and conversion copy. Star your favorites for quick access.
+            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+              Tested templates for image generation, cinematic video, full-stack architecture, and conversion copy. Powered by live Firebase Realtime Database.
             </p>
           </div>
 
@@ -125,7 +130,7 @@ export const ViewerPanel: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search prompts by keyword, model (Flux, Claude, Midjourney), or tag..."
-                className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-slate-100 text-sm placeholder:text-slate-500 outline-none transition-all"
+                className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-slate-100 text-xs sm:text-sm placeholder:text-slate-500 outline-none transition-all"
               />
               {searchQuery && (
                 <button
@@ -139,7 +144,7 @@ export const ViewerPanel: React.FC = () => {
             </div>
 
             {/* Quick KPI Strip */}
-            <div className="flex items-center gap-4 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-400 shrink-0">
+            <div className="flex items-center gap-3 sm:gap-4 px-3.5 py-2 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-400 shrink-0 self-start sm:self-auto">
               <div>
                 <span className="font-bold text-slate-200 tabular-nums">{publishedPrompts.length}</span> Prompts
               </div>
@@ -207,7 +212,7 @@ export const ViewerPanel: React.FC = () => {
         {/* Controls Toolbar: Nav Tabs & Layout Toggle */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800/80">
           {/* Segmented Filter Control */}
-          <div className="flex items-center gap-1 p-1 bg-slate-900 border border-slate-800 rounded-lg overflow-x-auto">
+          <div className="flex items-center gap-1 p-1 bg-slate-900 border border-slate-800 rounded-lg overflow-x-auto no-scrollbar">
             <button
               type="button"
               onClick={() => setNavFilter('all')}
@@ -270,7 +275,7 @@ export const ViewerPanel: React.FC = () => {
           </div>
 
           {/* Right Toolbar: View mode toggles */}
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center justify-between sm:justify-end gap-2">
             <span className="text-xs text-slate-500 tabular-nums">
               Showing {filteredPrompts.length} {filteredPrompts.length === 1 ? 'prompt' : 'prompts'}
             </span>
@@ -299,8 +304,22 @@ export const ViewerPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Prompts Display */}
-        {filteredPrompts.length === 0 ? (
+        {/* Loading State */}
+        {isLoadingData ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-pulse">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-72 rounded-xl bg-slate-900 border border-slate-800 p-4 space-y-3"
+              >
+                <div className="w-full h-36 bg-slate-800 rounded-lg" />
+                <div className="w-1/3 h-3 bg-slate-800 rounded" />
+                <div className="w-3/4 h-4 bg-slate-800 rounded" />
+                <div className="w-full h-3 bg-slate-800 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : filteredPrompts.length === 0 ? (
           <div className="py-16 text-center rounded-2xl bg-slate-900/40 border border-dashed border-slate-800 space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto text-slate-500">
               {navFilter === 'favorites' ? (
@@ -310,16 +329,18 @@ export const ViewerPanel: React.FC = () => {
               )}
             </div>
             <h3 className="text-base font-semibold text-slate-200">
-              {navFilter === 'favorites' ? 'No favorites saved yet' : 'No prompts found'}
+              {navFilter === 'favorites'
+                ? 'No favorites saved yet'
+                : 'No published prompts in Firebase yet'}
             </h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
               {navFilter === 'favorites'
                 ? 'Click the star icon on any prompt card or in the detail view to save your favorite prompts here.'
                 : searchQuery
                 ? `No prompts matched "${searchQuery}". Try clearing search or choose another category.`
-                : 'No published prompts in this category yet. You can add one right now in the Admin panel!'}
+                : 'Prompts will appear here in real-time as soon as the administrator publishes them to Firebase.'}
             </p>
-            <div className="pt-2 flex items-center justify-center gap-2">
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
               {navFilter === 'favorites' ? (
                 <button
                   type="button"
@@ -337,14 +358,28 @@ export const ViewerPanel: React.FC = () => {
                   Clear Search
                 </button>
               ) : null}
-              <button
-                type="button"
-                onClick={handleCreatePrompt}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add in Admin Studio</span>
-              </button>
+
+              {/* Only the fixed administrator sees seed/add buttons */}
+              {isUserAdmin && (
+                <>
+                  <button
+                    type="button"
+                    onClick={initializeFirebaseDefaults}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 rounded-lg transition-colors"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Initialize Starter Prompts in Firebase</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreatePrompt}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add in Admin Studio</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ) : (

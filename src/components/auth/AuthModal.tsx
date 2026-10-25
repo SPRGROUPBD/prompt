@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import {
-  auth,
-  FIXED_ADMIN_EMAIL,
-} from '../../services/firebase';
+import { auth, FIXED_ADMIN_EMAIL } from '../../services/firebase';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -15,9 +12,7 @@ import {
   Lock,
   Mail,
   User as UserIcon,
-  ShieldCheck,
   ArrowRight,
-  Sparkles,
 } from 'lucide-react';
 
 export const AuthModal: React.FC = () => {
@@ -27,6 +22,7 @@ export const AuthModal: React.FC = () => {
     authModalMode,
     setAuthModalMode,
     showToast,
+    setWorkspaceMode,
   } = useWorkspace();
 
   const [email, setEmail] = useState('');
@@ -58,8 +54,17 @@ export const AuthModal: React.FC = () => {
 
     try {
       if (authModalMode === 'signin') {
-        await signInWithEmailAndPassword(auth, email.trim(), password);
-        showToast(`Welcome back, ${email.trim()}!`, 'success');
+        const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const signedEmail = userCred.user?.email?.toLowerCase().trim();
+        const isAdmin = signedEmail === FIXED_ADMIN_EMAIL.toLowerCase();
+
+        if (isAdmin) {
+          showToast('Signed in as Administrator. Admin panel unlocked.', 'success');
+        } else {
+          showToast(`Welcome back, ${email.trim()}!`, 'success');
+        }
+        // Always maintain viewer view on login unless admin switches
+        setWorkspaceMode('viewer');
         handleClose();
       } else if (authModalMode === 'signup') {
         if (password.length < 6) {
@@ -77,6 +82,7 @@ export const AuthModal: React.FC = () => {
           await updateProfile(userCred.user, { displayName: displayName.trim() });
         }
         showToast('Account created successfully! Welcome to PromptStudio.', 'success');
+        setWorkspaceMode('viewer');
         handleClose();
       } else if (authModalMode === 'forgot') {
         if (!email.trim()) {
@@ -85,7 +91,7 @@ export const AuthModal: React.FC = () => {
           return;
         }
         await sendPasswordResetEmail(auth, email.trim());
-        showToast('Password reset link sent! Check your inbox.', 'info');
+        showToast('Password reset link sent! Please check your inbox.', 'info');
         setAuthModalMode('signin');
       }
     } catch (err: any) {
@@ -101,13 +107,6 @@ export const AuthModal: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // 1-click helper for fixed admin testing
-  const handleAdminPreset = () => {
-    setEmail(FIXED_ADMIN_EMAIL);
-    setPassword('user@900');
-    setAuthModalMode('signin');
   };
 
   return (
@@ -127,9 +126,9 @@ export const AuthModal: React.FC = () => {
               <Lock className="w-4 h-4" />
             </div>
             <h2 className="text-base font-bold text-white tracking-tight">
-              {authModalMode === 'signin' && 'Sign In to PromptStudio'}
-              {authModalMode === 'signup' && 'Create Your Account'}
-              {authModalMode === 'forgot' && 'Reset Your Password'}
+              {authModalMode === 'signin' && 'Sign In'}
+              {authModalMode === 'signup' && 'Create Account'}
+              {authModalMode === 'forgot' && 'Reset Password'}
             </h2>
           </div>
           <button
@@ -137,7 +136,7 @@ export const AuthModal: React.FC = () => {
             onClick={handleClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -187,7 +186,7 @@ export const AuthModal: React.FC = () => {
           {authModalMode === 'signup' && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Display Name
+                Full Name
               </label>
               <div className="relative">
                 <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -196,7 +195,7 @@ export const AuthModal: React.FC = () => {
                   required
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="e.g. Alex River"
+                  placeholder="e.g. Sajjad Ahmed"
                   className="w-full pl-9 pr-3.5 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 outline-none"
                 />
               </div>
@@ -283,7 +282,7 @@ export const AuthModal: React.FC = () => {
               <>
                 <span>
                   {authModalMode === 'signin' && 'Sign In'}
-                  {authModalMode === 'signup' && 'Create Free Account'}
+                  {authModalMode === 'signup' && 'Create Account'}
                   {authModalMode === 'forgot' && 'Send Password Reset Link'}
                 </span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -291,31 +290,6 @@ export const AuthModal: React.FC = () => {
             )}
           </button>
         </form>
-
-        {/* Fixed Admin Shortcut Preset */}
-        <div className="pt-2 border-t border-slate-800 space-y-2">
-          <div className="flex items-center justify-between text-[11px] text-slate-400">
-            <span className="flex items-center gap-1 font-medium text-slate-300">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Fixed Admin Quick Login:
-            </span>
-            <button
-              type="button"
-              onClick={handleAdminPreset}
-              className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
-            >
-              Fill Credentials
-            </button>
-          </div>
-          <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 text-[11px] text-slate-400 space-y-0.5">
-            <div>
-              Email: <code className="text-emerald-300">{FIXED_ADMIN_EMAIL}</code>
-            </div>
-            <div>
-              Password: <code className="text-slate-300">user@900</code>
-            </div>
-          </div>
-        </div>
 
         {authModalMode === 'forgot' && (
           <button

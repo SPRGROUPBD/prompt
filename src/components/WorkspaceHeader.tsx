@@ -7,7 +7,6 @@ import {
   Columns2,
   Plus,
   Star,
-  User as UserIcon,
   LogIn,
   LogOut,
   Menu,
@@ -22,10 +21,8 @@ export const WorkspaceHeader: React.FC = () => {
     setAdminSection,
     setSelectedPromptForEdit,
     prompts,
-    adminAccessOpen,
     favoritePromptIds,
     currentUser,
-    userProfile,
     isUserAdmin,
     setAuthModalOpen,
     setAuthModalMode,
@@ -39,11 +36,10 @@ export const WorkspaceHeader: React.FC = () => {
   const favCount = favoritePromptIds.length;
 
   const handleQuickAdd = () => {
+    if (!isUserAdmin) return;
     setSelectedPromptForEdit(null);
     setAdminSection('new-prompt');
-    if (workspaceMode === 'viewer') {
-      setWorkspaceMode('admin');
-    }
+    setWorkspaceMode('admin');
   };
 
   const handleOpenAuth = (mode: 'signin' | 'signup') => {
@@ -56,7 +52,7 @@ export const WorkspaceHeader: React.FC = () => {
   return (
     <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-        {/* Zone 1: Single element brand wordmark */}
+        {/* Zone 1: Brand title */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
             <Sparkles className="w-5 h-5 text-indigo-100" />
@@ -66,73 +62,83 @@ export const WorkspaceHeader: React.FC = () => {
               <span className="text-base font-bold tracking-tight text-white whitespace-nowrap">
                 PromptStudio
               </span>
-              <span className="text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Admin Open
-              </span>
+              {isUserAdmin ? (
+                <span className="text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Admin Active
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  AI Library
+                </span>
+              )}
             </div>
             <span className="text-[11px] text-slate-400 hidden sm:inline">
-              Single-Tab Workspace · {publishedCount} Prompts Live
+              {publishedCount} Prompts Live in Firebase
             </span>
           </div>
         </div>
 
-        {/* Zone 2: Workspace View Switcher (Desktop & Tablet) */}
-        <nav
-          className="hidden md:flex items-center p-1 bg-slate-950/70 border border-slate-800/80 rounded-xl"
-          aria-label="Workspace views"
-        >
-          <button
-            type="button"
-            onClick={() => setWorkspaceMode('viewer')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
-              workspaceMode === 'viewer'
-                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
+        {/* Zone 2: Workspace View Switcher - ONLY VISIBLE TO FIXED ADMIN */}
+        {isUserAdmin && (
+          <nav
+            className="hidden md:flex items-center p-1 bg-slate-950/70 border border-slate-800/80 rounded-xl"
+            aria-label="Workspace views"
           >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Viewer Panel</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setWorkspaceMode('viewer')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
+                workspaceMode === 'viewer'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Viewer Panel</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setWorkspaceMode('admin')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
-              workspaceMode === 'admin'
-                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Admin Studio</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setWorkspaceMode('admin')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
+                workspaceMode === 'admin'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Admin Studio</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setWorkspaceMode('split')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
-              workspaceMode === 'split'
-                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-            title="Side-by-side view: Edit in Admin & see live Website simultaneously"
-          >
-            <Columns2 className="w-3.5 h-3.5" />
-            <span>Split View</span>
-          </button>
-        </nav>
+            <button
+              type="button"
+              onClick={() => setWorkspaceMode('split')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
+                workspaceMode === 'split'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+              title="Side-by-side view: Edit in Admin & see live Website simultaneously"
+            >
+              <Columns2 className="w-3.5 h-3.5" />
+              <span>Split View</span>
+            </button>
+          </nav>
+        )}
 
-        {/* Zone 3: Primary Actions (Auth, Favorites, Add Prompt) */}
+        {/* Zone 3: Primary Actions (Auth, Favorites, Add Prompt for Admin) */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Quick Add Prompt */}
-          <button
-            type="button"
-            onClick={handleQuickAdd}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 rounded-lg shadow-sm shadow-indigo-500/25 transition-all whitespace-nowrap"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Add Prompt</span>
-          </button>
+          {/* Quick Add Prompt - ONLY FOR ADMIN */}
+          {isUserAdmin && (
+            <button
+              type="button"
+              onClick={handleQuickAdd}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 rounded-lg shadow-sm shadow-indigo-500/25 transition-all whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Add Prompt</span>
+            </button>
+          )}
 
           {/* User Account / Auth Control */}
           {currentUser ? (
@@ -185,17 +191,20 @@ export const WorkspaceHeader: React.FC = () => {
                     <span>My Favorites ({favCount})</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUserDropdownOpen(false);
-                      setWorkspaceMode('admin');
-                    }}
-                    className="w-full text-left px-3 py-1.5 text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Admin Studio</span>
-                  </button>
+                  {/* Admin Studio only in dropdown if user is actually admin */}
+                  {isUserAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        setWorkspaceMode('admin');
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 flex items-center gap-2 font-medium"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Admin Studio</span>
+                    </button>
+                  )}
 
                   <div className="pt-1 border-t border-slate-800">
                     <button
@@ -217,28 +226,29 @@ export const WorkspaceHeader: React.FC = () => {
             <button
               type="button"
               onClick={() => handleOpenAuth('signin')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-all shadow-sm"
             >
-              <LogIn className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="hidden sm:inline">Sign In / Register</span>
-              <span className="sm:hidden">Sign In</span>
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In</span>
             </button>
           )}
 
-          {/* Mobile Menu Hamburger */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
-            title="Toggle Menu"
-          >
-            {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-          </button>
+          {/* Mobile Menu Hamburger (for admin only if they want to switch view on mobile) */}
+          {isUserAdmin && (
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+              title="Admin Menu"
+            >
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation */}
-      {mobileMenuOpen && (
+      {/* Mobile Drawer Navigation for Admin */}
+      {isUserAdmin && mobileMenuOpen && (
         <div className="md:hidden border-t border-slate-800 bg-slate-900 p-4 space-y-3 animate-in slide-in-from-top-2 duration-150">
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -268,25 +278,6 @@ export const WorkspaceHeader: React.FC = () => {
               <span>Admin Studio</span>
             </button>
           </div>
-
-          {!currentUser && (
-            <div className="flex gap-2 pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => handleOpenAuth('signin')}
-                className="flex-1 py-2 text-xs font-semibold text-center rounded-lg bg-slate-800 text-slate-200"
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => handleOpenAuth('signup')}
-                className="flex-1 py-2 text-xs font-semibold text-center rounded-lg bg-indigo-600 text-white"
-              >
-                Register
-              </button>
-            </div>
-          )}
         </div>
       )}
     </header>

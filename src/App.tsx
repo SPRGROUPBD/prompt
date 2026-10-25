@@ -9,15 +9,15 @@ import { AuthModal } from './components/auth/AuthModal';
 import { RewardAdModal } from './components/ads/RewardAdModal';
 
 const MainWorkspaceContent: React.FC = () => {
-  const { workspaceMode } = useWorkspace();
+  const { workspaceMode, isUserAdmin } = useWorkspace();
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
       <WorkspaceHeader />
       <div className="flex-1 flex min-w-0">
         {workspaceMode === 'viewer' && <ViewerPanel />}
-        {workspaceMode === 'admin' && <AdminPanel />}
-        {workspaceMode === 'split' && <SplitWorkspaceView />}
+        {isUserAdmin && workspaceMode === 'admin' && <AdminPanel />}
+        {isUserAdmin && workspaceMode === 'split' && <SplitWorkspaceView />}
       </div>
       <AuthModal />
       <RewardAdModal />
